@@ -15,7 +15,8 @@ export default class DocumentCrud extends React.Component<
     status: this.listNotConfigured(this.props)
       ? "Please configure list in Web Part properties"
       : "Ready",
-    documents: []
+    documentFile: [],
+    metaDataFile: []
   };
   // constructor(props: IDocumentCrudProps, state: IDocumentCrudState) {
   //   super(props);
@@ -31,13 +32,17 @@ export default class DocumentCrud extends React.Component<
   public render(): React.ReactElement<IDocumentCrudProps> {
     return (
       <div className={styles.documentCrud}>
-        {this.state.documents.map(document => (
+        {this.state.documentFile.map(document => (
           <Diving
             key={document.Id}
             name={document.Name}
             id={document.Id}
             documentLink={document.DocumentLink}
-          />
+          >
+            {this.state.metaDataFile
+              .filter(f => f.Id === document.Id)
+              .map(metaData => metaData.FileMetaData)}
+          </Diving>
         ))}
       </div>
     );
@@ -48,31 +53,46 @@ export default class DocumentCrud extends React.Component<
   }
 
   private getMyItems(items): void {
-    let documentList = [];
-    items.forEach(element => {
-      documentList.push({
-        Id: element.Id,
-        Name: element.File.Name,
-        DocumentLink: element.File.LinkingUrl
+    let documentFiles = [];
+    let documentMetaData = [];
+    items.forEach(file => {
+      documentFiles.push({
+        Id: file.Id,
+        Name: file.File.Name,
+        DocumentLink: file.File.LinkingUrl
       });
+      file.MyMetadata.forEach(metaData => {
+        documentMetaData.push({
+          Id: file.Id,
+          FileMetaData: metaData.Label + ";"
+        });
+      });
+      // console.log(element);
+      // documentList.push({
+      //   Id: element.Id,
+      //   Name: element.File.Name,
+      //   DocumentLink: element.File.LinkingUrl
+      // });
     });
-    console.log(documentList);
+    // console.log(documentList);
     this.setState({
-      documents: documentList,
-      status: `Successfully loaded ${documentList.length} items`
+      documentFile: documentFiles,
+      metaDataFile: documentMetaData,
+      status: `Successfully loaded ${documentFiles.length} items`
     });
   }
 
   private readItems(): void {
     let documentList = [];
-    this.setState({ documents: [], status: "Loading all items..." });
+    this.setState({ documentFile: [], status: "Loading all items..." });
     sp.web.lists
       .getByTitle(this.props.listName)
       .items.expand("File")
       .getAll()
       .then(
-        itema => {
-          this.getMyItems(itema);
+        items => {
+          // console.log(items);
+          this.getMyItems(items);
         },
         (error: any): void => {
           this.setState({
