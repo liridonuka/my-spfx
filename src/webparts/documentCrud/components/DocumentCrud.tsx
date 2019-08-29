@@ -16,24 +16,27 @@ export default class DocumentCrud extends React.Component<
   IDocumentCrudProps,
   IDocumentCrudState
 > {
-  public state = {
-    status: this.listNotConfigured(this.props)
-      ? "Please configure list in Web Part properties"
-      : "Ready",
-    documentFiles: [],
-    policyCategories: [],
-    policyCategoryDropDown: []
-  };
-  // constructor(props: IDocumentCrudProps, state: IDocumentCrudState) {
-  //   super(props);
+  // public state = {
+  //   status: this.listNotConfigured(this.props)
+  //     ? "Please configure list in Web Part properties"
+  //     : "Ready",
+  //   documentFiles: [],
+  //   policyCategories: [],
+  //   policyCategoryDropDown: []
+  // };
+  constructor(props: IDocumentCrudProps, state: IDocumentCrudState) {
+    super(props);
 
-  //   this.state = {
-  //     status: this.listNotConfigured(this.props)
-  //       ? "Please configure list in Web Part properties"
-  //       : "Ready",
-  //     documents: []
-  //   };
-  // }
+    this.state = {
+      status: this.listNotConfigured(this.props)
+        ? "Please configure list in Web Part properties"
+        : "Ready",
+      documentFiles: [],
+      joinPolicyCategoryItems: [],
+      policyCategoryDropDown: [],
+      stringPolicyCategory: []
+    };
+  }
 
   public render(): React.ReactElement<IDocumentCrudProps> {
     return (
@@ -86,60 +89,63 @@ export default class DocumentCrud extends React.Component<
 
   private getPolicies(items): void {
     let documentFiles = [];
-    let policyCategories = [];
-    let conncatList = [];
-    items.forEach(file => {
+    let joinPolicyCategoryItems = [];
+    items.forEach(policy => {
       documentFiles.push({
-        Id: file.Id,
-        Name: file.File.Name,
-        DocumentLink: file.File.LinkingUrl,
-        ApprovedDate: file.Modified
+        Id: policy.Id,
+        Name: policy.File.Name,
+        DocumentLink: policy.File.LinkingUrl,
+        ApprovedDate: policy.Modified
       });
-      file.Policy_x0020_Category.forEach(metaData => {
-        policyCategories.push({
-          Id: file.Id,
-          MetaData: metaData.Label.split(/:/)[1]
+      policy.MyMetadata.forEach(policyCategory => {
+        joinPolicyCategoryItems.push({
+          Id: policy.Id,
+          MetaData: policyCategory.Label.split(/:/)[1]
         });
       });
     });
 
-    this.policyCategory(policyCategories);
+    this.dropDownPolicyCategory(joinPolicyCategoryItems);
 
     this.setState({
       documentFiles,
-      policyCategories,
+      joinPolicyCategoryItems,
       status: `Successfully loaded ${documentFiles.length} items`
     });
   }
 
-  private filteredFile(item: IDropdownOption): void {
-    const newSelectedItems = [];
-    if (item.selected) {
+  private filteredFile(selectedItems) {
+    let stringPolicyCategory = [...this.state.stringPolicyCategory];
+    if (selectedItems.selected) {
       // add the option if it's checked
-      newSelectedItems.push(item.key as string);
+      stringPolicyCategory.push(selectedItems.text);
     } else {
       // remove the option if it's unchecked
-      const currIndex = newSelectedItems.indexOf(item.key as string);
+      const currIndex = stringPolicyCategory.indexOf(selectedItems.text);
       if (currIndex > -1) {
-        newSelectedItems.splice(currIndex, 1);
+        stringPolicyCategory.splice(currIndex, 1);
       }
     }
-    console.log(newSelectedItems);
-    // this.setState({
-    //   policyCategoryDropDown: newSelectedItems
-    // });
 
-    // console.log(newSelectedItems.length);
-    // //finally filter files based on search fieds
-    // let conncatList = [];
-    // let filteredPolicies = [];
-    // this.state.policyCategories.forEach(filtered => {
-    //   if (filtered.Label.includes(parameter))
-    //     filteredPolicies.push({
-    //       Id: filtered.Id,
-    //       MetaData: filtered.Label
-    //     });
-    // });
+    this.setState({
+      stringPolicyCategory
+    });
+    console.log(stringPolicyCategory);
+
+    //finally filter files based on search fieds
+    let conncatList = [];
+    let filteredPolicies = [];
+    this.state.joinPolicyCategoryItems.forEach(filtered => {
+      if (filtered["MetaData"] !== undefined) {
+        if (filtered["MetaData"].includes("Mjed"))
+          filteredPolicies.push({
+            Id: filtered.Id,
+            MetaData: filtered["MetaData"]
+          });
+      }
+    });
+
+    console.log(filteredPolicies);
     // //remove duplicates and get unique values
     // let uniqueId = new Set(filteredPolicies.map(i => i.Id));
     // let notIn = [];
@@ -161,13 +167,23 @@ export default class DocumentCrud extends React.Component<
     // );
   }
 
-  //dropdown
-  private policyCategory(policyCategory): void {
-    let policyCategoryDropDown = [];
-    policyCategory.forEach(item => {
-      policyCategoryDropDown.push({ key: item.MetaData, text: item.MetaData });
+  //dropdowns
+  private dropDownPolicyCategory(items): void {
+    let policyCategoryItems = [];
+    items.forEach(item => {
+      if (item.MetaData) {
+        policyCategoryItems.push({
+          key: item.MetaData,
+          text: item.MetaData
+        });
+      }
     });
 
+    let uniqueItems = new Set(policyCategoryItems.map(unique => unique.text));
+    let policyCategoryDropDown = [];
+    uniqueItems.forEach(uniqueItem => {
+      policyCategoryDropDown.push({ key: uniqueItem, text: uniqueItem });
+    });
     this.setState({ policyCategoryDropDown });
 
     // console.log(dropDownItems);
