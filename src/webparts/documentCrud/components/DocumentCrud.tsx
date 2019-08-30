@@ -31,6 +31,7 @@ export default class DocumentCrud extends React.Component<
       status: this.listNotConfigured(this.props)
         ? "Please configure list in Web Part properties"
         : "Ready",
+      internalPolicies: [],
       documentFiles: [],
       joinPolicyCategoryItems: [],
       policyCategoryDropDown: [],
@@ -76,7 +77,6 @@ export default class DocumentCrud extends React.Component<
       .getAll()
       .then(
         items => {
-          // console.log(items);
           this.getPolicies(items);
         },
         (error: any): void => {
@@ -95,9 +95,11 @@ export default class DocumentCrud extends React.Component<
         Id: policy.Id,
         Name: policy.File.Name,
         DocumentLink: policy.File.LinkingUrl,
-        ApprovedDate: policy.Modified
+        ApprovedDate: new Date(
+          policy.Date_x0020_of_x0020_approval
+        ).toLocaleDateString()
       });
-      policy.MyMetadata.forEach(policyCategory => {
+      policy.Policy_x0020_Category.forEach(policyCategory => {
         joinPolicyCategoryItems.push({
           Id: policy.Id,
           MetaData: policyCategory.Label.split(/:/)[1]
@@ -109,6 +111,7 @@ export default class DocumentCrud extends React.Component<
 
     this.setState({
       documentFiles,
+      internalPolicies: documentFiles,
       joinPolicyCategoryItems,
       status: `Successfully loaded ${documentFiles.length} items`
     });
@@ -126,45 +129,33 @@ export default class DocumentCrud extends React.Component<
         stringPolicyCategory.splice(currIndex, 1);
       }
     }
-
     this.setState({
       stringPolicyCategory
     });
-    console.log(stringPolicyCategory);
 
-    //finally filter files based on search fieds
-    let conncatList = [];
-    let filteredPolicies = [];
-    this.state.joinPolicyCategoryItems.forEach(filtered => {
-      if (filtered["MetaData"] !== undefined) {
-        if (filtered["MetaData"].includes("Mjed"))
-          filteredPolicies.push({
-            Id: filtered.Id,
-            MetaData: filtered["MetaData"]
-          });
-      }
+    let filteredJoinPolicyCategories = [];
+    let filteredList = [...this.state.internalPolicies];
+    stringPolicyCategory.forEach(policy => {
+      this.state.joinPolicyCategoryItems
+        .filter(f => f["MetaData"] === policy)
+        .map(join =>
+          filteredJoinPolicyCategories.push({
+            Id: join.Id,
+            PolicyCtaegory: join["MetaData"]
+          })
+        );
+    });
+    //remove duplicates and get unique values for filtered policies in join Policy Category
+    let uniqueId = new Set(filteredJoinPolicyCategories.map(i => i.Id));
+    let notIn = [];
+    uniqueId.forEach(Id => {
+      notIn.push(Id);
     });
 
-    console.log(filteredPolicies);
-    // //remove duplicates and get unique values
-    // let uniqueId = new Set(filteredPolicies.map(i => i.Id));
-    // let notIn = [];
-    // uniqueId.forEach(Id => {
-    //   notIn.push(Id);
-    // });
-
-    // this.state.documentFiles.map(f =>
-    //   notIn
-    //     .filter(q => q === f.Id)
-    //     .map(m =>
-    //       conncatList.push({
-    //         Id: f.Id,
-    //         Name: f.Name,
-    //         DocumentLink: f.DocumentLink,
-    //         ApprovedDate: new Date(f.ApprovedDate).toLocaleDateString()
-    //       })
-    //     )
-    // );
+    const filteredPolicies = filteredList.filter(({ Id: Idv }) =>
+      filteredJoinPolicyCategories.some(({ Id: idc }) => Idv === idc)
+    );
+    this.setState({ documentFiles: filteredPolicies });
   }
 
   //dropdowns
@@ -185,8 +176,6 @@ export default class DocumentCrud extends React.Component<
       policyCategoryDropDown.push({ key: uniqueItem, text: uniqueItem });
     });
     this.setState({ policyCategoryDropDown });
-
-    // console.log(dropDownItems);
   }
 
   private listNotConfigured(props: IDocumentCrudProps): boolean {
