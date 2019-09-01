@@ -43,24 +43,28 @@ export default class DocumentCrud extends React.Component<
     return (
       <div className={styles.documentCrud}>
         <div>
-          <Dropdown
-            placeHolder="Filter by business functions"
-            onChanged={this.filteredFile.bind(this)}
-            multiSelect
-            options={this.state.policyCategoryDropDown}
-            // title={this.state.titleCategory}
-          />
+          <div className="row">
+            <Dropdown
+              placeHolder="Filter by business functions"
+              onChanged={this.filteredFile.bind(this)}
+              multiSelect
+              options={this.state.policyCategoryDropDown}
+              // title={this.state.titleCategory}
+            />
+          </div>
+          <div>
+            {this.state.documentFiles.map(document => (
+              <Diving
+                key={document.Id}
+                name={document.Name}
+                id={document.Id}
+                documentLink={document.DocumentLink}
+              >
+                {document.ApprovedDate}
+              </Diving>
+            ))}
+          </div>
         </div>
-        {this.state.documentFiles.map(document => (
-          <Diving
-            key={document.Id}
-            name={document.Name}
-            id={document.Id}
-            documentLink={document.DocumentLink}
-          >
-            {document.ApprovedDate}
-          </Diving>
-        ))}
       </div>
     );
   }
@@ -99,15 +103,15 @@ export default class DocumentCrud extends React.Component<
           policy.Date_x0020_of_x0020_approval
         ).toLocaleDateString()
       });
-      policy.Policy_x0020_Category.forEach(policyCategory => {
+      policy.MyMetadata.forEach(policyCategory => {
         joinPolicyCategoryItems.push({
           Id: policy.Id,
-          MetaData: policyCategory.Label.split(/:/)[1]
+          PolicyCategory: policyCategory.Label.split(/:/)[1]
         });
       });
     });
 
-    this.dropDownPolicyCategory(joinPolicyCategoryItems);
+    // this.dropDownPolicyCategory(joinPolicyCategoryItems);
 
     this.setState({
       documentFiles,
@@ -115,6 +119,7 @@ export default class DocumentCrud extends React.Component<
       joinPolicyCategoryItems,
       status: `Successfully loaded ${documentFiles.length} items`
     });
+    this.dropDownPolicyCategory();
   }
 
   private filteredFile(selectedItems) {
@@ -137,11 +142,11 @@ export default class DocumentCrud extends React.Component<
     let filteredList = [...this.state.internalPolicies];
     stringPolicyCategory.forEach(policy => {
       this.state.joinPolicyCategoryItems
-        .filter(f => f["MetaData"] === policy)
+        .filter(f => f["PolicyCategory"] === policy)
         .map(join =>
           filteredJoinPolicyCategories.push({
             Id: join.Id,
-            PolicyCtaegory: join["MetaData"]
+            PolicyCtaegory: join["PolicyCategory"]
           })
         );
     });
@@ -155,17 +160,23 @@ export default class DocumentCrud extends React.Component<
     const filteredPolicies = filteredList.filter(({ Id: Idv }) =>
       filteredJoinPolicyCategories.some(({ Id: idc }) => Idv === idc)
     );
-    this.setState({ documentFiles: filteredPolicies });
+    this.setState({
+      documentFiles:
+        stringPolicyCategory.length > 0
+          ? filteredPolicies
+          : this.state.internalPolicies
+    });
   }
 
   //dropdowns
-  private dropDownPolicyCategory(items): void {
+  private dropDownPolicyCategory(): void {
     let policyCategoryItems = [];
-    items.forEach(item => {
-      if (item.MetaData) {
+    console.log(this.state.joinPolicyCategoryItems);
+    this.state.joinPolicyCategoryItems.forEach(item => {
+      if (item["PolicyCategory"]) {
         policyCategoryItems.push({
-          key: item.MetaData,
-          text: item.MetaData
+          key: item["PolicyCategory"],
+          text: item["PolicyCategory"]
         });
       }
     });
