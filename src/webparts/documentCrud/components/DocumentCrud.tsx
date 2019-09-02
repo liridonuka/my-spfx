@@ -35,7 +35,10 @@ export default class DocumentCrud extends React.Component<
       documentFiles: [],
       joinPolicyCategoryItems: [],
       policyCategoryDropDown: [],
-      stringPolicyCategory: []
+      stringPolicyCategory: [],
+      joinRegulatoryTopicItems: [],
+      regulatoryTopicDropDown: [],
+      stringRegulatoryTopic: []
     };
   }
 
@@ -49,6 +52,13 @@ export default class DocumentCrud extends React.Component<
               onChanged={this.filteredFile.bind(this)}
               multiSelect
               options={this.state.policyCategoryDropDown}
+              // title={this.state.titleCategory}
+            />
+            <Dropdown
+              placeHolder="Filter by regulatory topic"
+              onChanged={this.filteredFile.bind(this)}
+              multiSelect
+              options={this.state.regulatoryTopicDropDown}
               // title={this.state.titleCategory}
             />
           </div>
@@ -92,34 +102,41 @@ export default class DocumentCrud extends React.Component<
   }
 
   private getPolicies(items): void {
+    const monthNames = this.monthName();
     let documentFiles = [];
     let joinPolicyCategoryItems = [];
+    let joinRegulatoryTopicItems = [];
     items.forEach(policy => {
       documentFiles.push({
         Id: policy.Id,
         Name: policy.File.Name,
         DocumentLink: policy.File.LinkingUrl,
-        ApprovedDate: new Date(
-          policy.Date_x0020_of_x0020_approval
-        ).toLocaleDateString()
+        ApprovedDate:
+          monthNames[new Date(policy.Date_x0020_of_x0020_approval).getMonth()]
       });
-      policy.MyMetadata.forEach(policyCategory => {
+      policy.Policy_x0020_Category.forEach(policyCategory => {
         joinPolicyCategoryItems.push({
           Id: policy.Id,
           PolicyCategory: policyCategory.Label.split(/:/)[1]
         });
       });
+      policy.Regulatory_x0020_Topic.forEach(regulatoryTopic => {
+        joinRegulatoryTopicItems.push({
+          Id: policy.Id,
+          RegulatoryTopic: regulatoryTopic.Label.split(/:/)[1]
+        });
+      });
     });
-
-    // this.dropDownPolicyCategory(joinPolicyCategoryItems);
 
     this.setState({
       documentFiles,
       internalPolicies: documentFiles,
       joinPolicyCategoryItems,
+      joinRegulatoryTopicItems,
       status: `Successfully loaded ${documentFiles.length} items`
     });
     this.dropDownPolicyCategory();
+    // this.dropDownRegulatoryTopic();
   }
 
   private filteredFile(selectedItems) {
@@ -160,18 +177,22 @@ export default class DocumentCrud extends React.Component<
     const filteredPolicies = filteredList.filter(({ Id: Idv }) =>
       filteredJoinPolicyCategories.some(({ Id: idc }) => Idv === idc)
     );
+    // console.log(filteredPolicies);
     this.setState({
       documentFiles:
         stringPolicyCategory.length > 0
           ? filteredPolicies
-          : this.state.internalPolicies
+          : this.state.internalPolicies,
+      joinRegulatoryTopicItems: filteredPolicies
     });
+    console.log(this.state.joinRegulatoryTopicItems);
+    // this.dropDownRegulatoryTopic(filteredPolicies);
   }
 
   //dropdowns
   private dropDownPolicyCategory(): void {
     let policyCategoryItems = [];
-    console.log(this.state.joinPolicyCategoryItems);
+
     this.state.joinPolicyCategoryItems.forEach(item => {
       if (item["PolicyCategory"]) {
         policyCategoryItems.push({
@@ -187,6 +208,46 @@ export default class DocumentCrud extends React.Component<
       policyCategoryDropDown.push({ key: uniqueItem, text: uniqueItem });
     });
     this.setState({ policyCategoryDropDown });
+  }
+
+  private dropDownRegulatoryTopic(items): void {
+    let regulatoryTopicItems = [];
+    const filteredPolicies = this.state.joinRegulatoryTopicItems.filter(
+      ({ Id: Idv }) => items.some(({ Id: idc }) => Idv === idc)
+    );
+    filteredPolicies.forEach(item => {
+      if (item["RegulatoryTopic"]) {
+        regulatoryTopicItems.push({
+          key: item["RegulatoryTopic"],
+          text: item["RegulatoryTopic"]
+        });
+      }
+    });
+
+    let uniqueItems = new Set(regulatoryTopicItems.map(unique => unique.text));
+    let regulatoryTopicDropDown = [];
+    uniqueItems.forEach(uniqueItem => {
+      regulatoryTopicDropDown.push({ key: uniqueItem, text: uniqueItem });
+    });
+    this.setState({ regulatoryTopicDropDown });
+  }
+
+  private monthName() {
+    const monthNames = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December"
+    ];
+    return monthNames;
   }
 
   private listNotConfigured(props: IDocumentCrudProps): boolean {

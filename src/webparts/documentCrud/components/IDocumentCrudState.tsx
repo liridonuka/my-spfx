@@ -6,4 +6,7 @@ export interface IDocumentCrudState {
   joinPolicyCategoryItems: IListItem[];
   policyCategoryDropDown: object[];
   stringPolicyCategory: string[];
+  joinRegulatoryTopicItems: IListItem[];
+  regulatoryTopicDropDown: object[];
+  stringRegulatoryTopic: string[];
 }
