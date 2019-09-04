@@ -99,6 +99,7 @@ export default class DocumentCrud extends React.Component<
           });
         }
       );
+    console.log(sp.web.lists);
   }
 
   private getPolicies(items): void {
@@ -106,13 +107,13 @@ export default class DocumentCrud extends React.Component<
     let documentFiles = [];
     let joinPolicyCategoryItems = [];
     let joinRegulatoryTopicItems = [];
+    let itemList = [];
     items.forEach(policy => {
-      documentFiles.push({
+      itemList.push({
         Id: policy.Id,
         Name: policy.File.Name,
         DocumentLink: policy.File.LinkingUrl,
-        ApprovedDate:
-          monthNames[new Date(policy.Date_x0020_of_x0020_approval).getMonth()]
+        ApprovedDate: policy.Date_x0020_of_x0020_approval
       });
       policy.Policy_x0020_Category.forEach(policyCategory => {
         joinPolicyCategoryItems.push({
@@ -127,7 +128,43 @@ export default class DocumentCrud extends React.Component<
         });
       });
     });
-
+    joinPolicyCategoryItems.forEach(j => {
+      itemList
+        .filter(f => f.Id === j.Id)
+        .map(item => (item.PolicyCategory += ";" + j.PolicyCategory));
+    });
+    joinRegulatoryTopicItems.forEach(j => {
+      itemList
+        .filter(f => f.Id === j.Id)
+        .map(item => (item.RegulatoryTopic += ";" + j.RegulatoryTopic));
+    });
+    itemList.forEach(policy => {
+      documentFiles.push({
+        Id: policy.Id,
+        Name: policy.Name,
+        DocumentLink: policy.DocumentLink,
+        ApprovedDate: new Date(policy.ApprovedDate).toLocaleDateString(),
+        PolicyCategory: policy.PolicyCategory
+          ? policy.PolicyCategory.split("undefined;").pop()
+          : "",
+        RegulatoryTopic: policy.RegulatoryTopic
+          ? policy.RegulatoryTopic.split("undefined;").pop()
+          : ""
+      });
+    });
+    console.log(
+      documentFiles.filter(
+        f =>
+          f.PolicyCategory.includes("Operations") ||
+          f.PolicyCategory.includes("Audit")
+      )
+    );
+    // console.log(joinPolicyCategoryItems);
+    documentFiles = documentFiles.filter(
+      f =>
+        f.PolicyCategory.includes("Operations") ||
+        f.PolicyCategory.includes("Audit")
+    );
     this.setState({
       documentFiles,
       internalPolicies: documentFiles,
