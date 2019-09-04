@@ -2,7 +2,7 @@ import * as React from "react";
 import styles from "./DocumentCrud.module.scss";
 import { IDocumentCrudProps } from "./IDocumentCrudProps";
 import { escape } from "@microsoft/sp-lodash-subset";
-import { sp, Item, ItemAddResult, ItemUpdateResult } from "@pnp/sp";
+import { sp, Item, ItemAddResult, ItemUpdateResult, Web } from "@pnp/sp";
 import { IListItem } from "./IListItem";
 import { IDocumentCrudState } from "./IDocumentCrudState";
 import { Diving } from "./Diving";
@@ -11,7 +11,7 @@ import {
   DropdownMenuItemType,
   IDropdownOption
 } from "office-ui-fabric-react/lib/Dropdown";
-
+// import pnp from "sp-pnp-js";
 export default class DocumentCrud extends React.Component<
   IDocumentCrudProps,
   IDocumentCrudState
@@ -81,11 +81,24 @@ export default class DocumentCrud extends React.Component<
 
   public componentWillMount() {
     this.connectAndRead();
+    return new Promise<void>(
+      (resolve: () => void, reject: (error?: any) => void): void => {
+        sp.setup({
+          sp: {
+            headers: {
+              Accept: "application/json; odata=nometadata"
+            }
+          }
+        });
+        resolve();
+      }
+    );
   }
 
   private connectAndRead(): void {
     this.setState({ documentFiles: [], status: "Loading all items..." });
-    sp.web.lists
+    let web = new Web(this.props.context.pageContext.web.absoluteUrl);
+    web.lists
       .getByTitle(this.props.listName)
       .items.expand("File")
       .getAll()
@@ -99,7 +112,6 @@ export default class DocumentCrud extends React.Component<
           });
         }
       );
-    console.log(sp.web.lists);
   }
 
   private getPolicies(items): void {
@@ -115,13 +127,13 @@ export default class DocumentCrud extends React.Component<
         DocumentLink: policy.File.LinkingUrl,
         ApprovedDate: policy.Date_x0020_of_x0020_approval
       });
-      policy.Policy_x0020_Category.forEach(policyCategory => {
+      policy.MyMetadata.forEach(policyCategory => {
         joinPolicyCategoryItems.push({
           Id: policy.Id,
           PolicyCategory: policyCategory.Label.split(/:/)[1]
         });
       });
-      policy.Regulatory_x0020_Topic.forEach(regulatoryTopic => {
+      policy.RegulatoryTopic.forEach(regulatoryTopic => {
         joinRegulatoryTopicItems.push({
           Id: policy.Id,
           RegulatoryTopic: regulatoryTopic.Label.split(/:/)[1]
@@ -152,19 +164,19 @@ export default class DocumentCrud extends React.Component<
           : ""
       });
     });
-    console.log(
-      documentFiles.filter(
-        f =>
-          f.PolicyCategory.includes("Operations") ||
-          f.PolicyCategory.includes("Audit")
-      )
-    );
-    // console.log(joinPolicyCategoryItems);
-    documentFiles = documentFiles.filter(
-      f =>
-        f.PolicyCategory.includes("Operations") ||
-        f.PolicyCategory.includes("Audit")
-    );
+    // console.log(
+    //   documentFiles.filter(
+    //     f =>
+    //       f.PolicyCategory.includes("Operations") ||
+    //       f.PolicyCategory.includes("Audit")
+    //   )
+    // );
+    // // console.log(joinPolicyCategoryItems);
+    // documentFiles = documentFiles.filter(
+    //   f =>
+    //     f.PolicyCategory.includes("Operations") ||
+    //     f.PolicyCategory.includes("Audit")
+    // );
     this.setState({
       documentFiles,
       internalPolicies: documentFiles,

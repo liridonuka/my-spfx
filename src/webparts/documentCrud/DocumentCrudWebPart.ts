@@ -6,6 +6,7 @@ import {
   IPropertyPaneConfiguration,
   PropertyPaneTextField
 } from "@microsoft/sp-webpart-base";
+import { WebPartContext } from "@microsoft/sp-webpart-base";
 
 import * as strings from "DocumentCrudWebPartStrings";
 import DocumentCrud from "./components/DocumentCrud";
@@ -13,6 +14,7 @@ import { IDocumentCrudProps } from "./components/IDocumentCrudProps";
 
 export interface IDocumentCrudWebPartProps {
   listName: string;
+  context: WebPartContext;
 }
 
 export default class DocumentCrudWebPart extends BaseClientSideWebPart<
@@ -22,7 +24,8 @@ export default class DocumentCrudWebPart extends BaseClientSideWebPart<
     const element: React.ReactElement<IDocumentCrudProps> = React.createElement(
       DocumentCrud,
       {
-        listName: this.properties.listName
+        listName: this.properties.listName,
+        context: this.context
       }
     );
 
