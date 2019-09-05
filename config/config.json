@@ -9,10 +9,19 @@
           "manifest": "./src/webparts/documentCrud/DocumentCrudWebPart.manifest.json"
         }
       ]
+    },
+    "search-mask-web-part": {
+      "components": [
+        {
+          "entrypoint": "./lib/webparts/searchMask/SearchMaskWebPart.js",
+          "manifest": "./src/webparts/searchMask/SearchMaskWebPart.manifest.json"
+        }
+      ]
     }
   },
   "externals": {},
   "localizedResources": {
-    "DocumentCrudWebPartStrings": "lib/webparts/documentCrud/loc/{locale}.js"
+    "DocumentCrudWebPartStrings": "lib/webparts/documentCrud/loc/{locale}.js",
+    "SearchMaskWebPartStrings": "lib/webparts/searchMask/loc/{locale}.js"
   }
 }
