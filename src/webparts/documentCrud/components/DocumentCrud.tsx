@@ -2,7 +2,7 @@ import * as React from "react";
 import styles from "./DocumentCrud.module.scss";
 import { IDocumentCrudProps } from "./IDocumentCrudProps";
 import { escape } from "@microsoft/sp-lodash-subset";
-import { sp, Item, ItemAddResult, ItemUpdateResult, Web } from "@pnp/sp";
+import { Web } from "@pnp/sp";
 import { IListItem } from "./IListItem";
 import { IDocumentCrudState } from "./IDocumentCrudState";
 import { Diving } from "./Diving";
@@ -38,7 +38,9 @@ export default class DocumentCrud extends React.Component<
       stringPolicyCategory: [],
       joinRegulatoryTopicItems: [],
       regulatoryTopicDropDown: [],
-      stringRegulatoryTopic: []
+      stringRegulatoryTopic: [],
+      monthDropDown: [],
+      stringMonth: []
     };
   }
 
@@ -48,17 +50,24 @@ export default class DocumentCrud extends React.Component<
         <div>
           <div className="row">
             <Dropdown
-              placeHolder="Filter by business functions"
-              onChanged={this.filteredFile.bind(this)}
+              placeHolder="Filter by business function"
+              onChanged={this.filterByPolicyCategory.bind(this)}
               multiSelect
               options={this.state.policyCategoryDropDown}
               // title={this.state.titleCategory}
             />
             <Dropdown
               placeHolder="Filter by regulatory topic"
-              onChanged={this.filteredFile.bind(this)}
+              onChanged={this.filterByRegulatoryTopic.bind(this)}
               multiSelect
               options={this.state.regulatoryTopicDropDown}
+              // title={this.state.titleCategory}
+            />
+            <Dropdown
+              placeHolder="Filter by approval month"
+              onChanged={this.filterByRegulatoryTopic.bind(this)}
+              multiSelect
+              options={this.state.monthDropDown}
               // title={this.state.titleCategory}
             />
           </div>
@@ -81,18 +90,6 @@ export default class DocumentCrud extends React.Component<
 
   public componentWillMount() {
     this.connectAndRead();
-    return new Promise<void>(
-      (resolve: () => void, reject: (error?: any) => void): void => {
-        sp.setup({
-          sp: {
-            headers: {
-              Accept: "application/json; odata=nometadata"
-            }
-          }
-        });
-        resolve();
-      }
-    );
   }
 
   private connectAndRead(): void {
@@ -127,13 +124,13 @@ export default class DocumentCrud extends React.Component<
         DocumentLink: policy.File.LinkingUrl,
         ApprovedDate: policy.Date_x0020_of_x0020_approval
       });
-      policy.MyMetadata.forEach(policyCategory => {
+      policy.Policy_x0020_Category.forEach(policyCategory => {
         joinPolicyCategoryItems.push({
           Id: policy.Id,
           PolicyCategory: policyCategory.Label.split(/:/)[1]
         });
       });
-      policy.RegulatoryTopic.forEach(regulatoryTopic => {
+      policy.Regulatory_x0020_Topic.forEach(regulatoryTopic => {
         joinRegulatoryTopicItems.push({
           Id: policy.Id,
           RegulatoryTopic: regulatoryTopic.Label.split(/:/)[1]
@@ -161,22 +158,10 @@ export default class DocumentCrud extends React.Component<
           : "",
         RegulatoryTopic: policy.RegulatoryTopic
           ? policy.RegulatoryTopic.split("undefined;").pop()
-          : ""
+          : "",
+        Month: monthNames[new Date(policy.ApprovedDate).getMonth()]
       });
     });
-    // console.log(
-    //   documentFiles.filter(
-    //     f =>
-    //       f.PolicyCategory.includes("Operations") ||
-    //       f.PolicyCategory.includes("Audit")
-    //   )
-    // );
-    // // console.log(joinPolicyCategoryItems);
-    // documentFiles = documentFiles.filter(
-    //   f =>
-    //     f.PolicyCategory.includes("Operations") ||
-    //     f.PolicyCategory.includes("Audit")
-    // );
     this.setState({
       documentFiles,
       internalPolicies: documentFiles,
@@ -185,100 +170,146 @@ export default class DocumentCrud extends React.Component<
       status: `Successfully loaded ${documentFiles.length} items`
     });
     this.dropDownPolicyCategory();
-    // this.dropDownRegulatoryTopic();
+    this.dropDownRegulatoryTopic();
+    this.dropDownMonth();
   }
 
-  private filteredFile(selectedItems) {
-    let stringPolicyCategory = [...this.state.stringPolicyCategory];
-    if (selectedItems.selected) {
-      // add the option if it's checked
-      stringPolicyCategory.push(selectedItems.text);
-    } else {
-      // remove the option if it's unchecked
-      const currIndex = stringPolicyCategory.indexOf(selectedItems.text);
-      if (currIndex > -1) {
-        stringPolicyCategory.splice(currIndex, 1);
-      }
-    }
+  private filterByPolicyCategory(selectedItems) {
+    console.log(this.state.documentFiles);
+    const stringPolicyCategory = this.selectItems(
+      selectedItems,
+      this.state.stringPolicyCategory
+    );
     this.setState({
       stringPolicyCategory
     });
-
-    let filteredJoinPolicyCategories = [];
-    let filteredList = [...this.state.internalPolicies];
-    stringPolicyCategory.forEach(policy => {
-      this.state.joinPolicyCategoryItems
-        .filter(f => f["PolicyCategory"] === policy)
-        .map(join =>
-          filteredJoinPolicyCategories.push({
-            Id: join.Id,
-            PolicyCtaegory: join["PolicyCategory"]
-          })
-        );
+    const clonedList = this.clonedList();
+    let filteredList = [];
+    stringPolicyCategory.forEach(s => {
+      clonedList
+        .filter(f => f.PolicyCategory.includes(s))
+        .map(item => filteredList.push(item));
     });
-    //remove duplicates and get unique values for filtered policies in join Policy Category
-    let uniqueId = new Set(filteredJoinPolicyCategories.map(i => i.Id));
-    let notIn = [];
-    uniqueId.forEach(Id => {
-      notIn.push(Id);
+    let uniqueItems = new Set(filteredList.map(unique => unique));
+    let documentFiles = [];
+    uniqueItems.forEach(u => {
+      documentFiles.push(u);
     });
-
-    const filteredPolicies = filteredList.filter(({ Id: Idv }) =>
-      filteredJoinPolicyCategories.some(({ Id: idc }) => Idv === idc)
-    );
-    // console.log(filteredPolicies);
     this.setState({
       documentFiles:
-        stringPolicyCategory.length > 0
-          ? filteredPolicies
-          : this.state.internalPolicies,
-      joinRegulatoryTopicItems: filteredPolicies
+        stringPolicyCategory.length > 0 ? documentFiles : clonedList
     });
-    console.log(this.state.joinRegulatoryTopicItems);
-    // this.dropDownRegulatoryTopic(filteredPolicies);
+    this.dropDownRegulatoryTopic(
+      stringPolicyCategory.length > 0 ? documentFiles : clonedList
+    );
+    this.dropDownMonth(
+      stringPolicyCategory.length > 0 ? documentFiles : clonedList
+    );
+  }
+  private filterByRegulatoryTopic(selectedItems) {
+    const stringRegulatoryTopic = this.selectItems(
+      selectedItems,
+      this.state.stringPolicyCategory
+    );
+    this.setState({
+      stringRegulatoryTopic
+    });
+    const clonedList = this.clonedList();
+    let filteredList = [];
+    stringRegulatoryTopic.forEach(s => {
+      clonedList
+        .filter(f => f.RegulatoryTopic.includes(s))
+        .map(item => filteredList.push(item));
+    });
+    let uniqueItems = new Set(filteredList.map(unique => unique));
+    let documentFiles = [];
+    uniqueItems.forEach(u => {
+      documentFiles.push(u);
+    });
+    this.setState({
+      documentFiles:
+        stringRegulatoryTopic.length > 0 ? documentFiles : clonedList
+    });
+    this.dropDownPolicyCategory(
+      stringRegulatoryTopic.length > 0 ? documentFiles : clonedList
+    );
+  }
+  private selectItems(selectedItems, stringList) {
+    let result = [...stringList];
+    if (selectedItems.selected) {
+      // add the option if it's checked
+      result.push(selectedItems.text);
+    } else {
+      // remove the option if it's unchecked
+      const currIndex = result.indexOf(selectedItems.text);
+      if (currIndex > -1) {
+        result.splice(currIndex, 1);
+      }
+    }
+    return result;
+  }
+  private clonedList() {
+    let clonedList = [...this.state.internalPolicies];
+    let list = [];
+    clonedList.forEach(policy => {
+      list.push({
+        Id: policy.Id,
+        Name: policy.Name,
+        DocumentLink: policy.DocumentLink,
+        ApprovedDate: new Date(policy.ApprovedDate).toLocaleDateString(),
+        PolicyCategory: policy.PolicyCategory,
+        RegulatoryTopic: policy.RegulatoryTopic
+      });
+    });
+    return list;
   }
 
   //dropdowns
-  private dropDownPolicyCategory(): void {
-    let policyCategoryItems = [];
-
-    this.state.joinPolicyCategoryItems.forEach(item => {
-      if (item["PolicyCategory"]) {
-        policyCategoryItems.push({
-          key: item["PolicyCategory"],
-          text: item["PolicyCategory"]
-        });
-      }
-    });
-
-    let uniqueItems = new Set(policyCategoryItems.map(unique => unique.text));
-    let policyCategoryDropDown = [];
-    uniqueItems.forEach(uniqueItem => {
-      policyCategoryDropDown.push({ key: uniqueItem, text: uniqueItem });
-    });
+  private dropDownPolicyCategory(items?): void {
+    const filedName = "PolicyCategory";
+    const policyCategoryDropDown = this.fillDropDown(items, filedName);
     this.setState({ policyCategoryDropDown });
   }
 
-  private dropDownRegulatoryTopic(items): void {
-    let regulatoryTopicItems = [];
-    const filteredPolicies = this.state.joinRegulatoryTopicItems.filter(
-      ({ Id: Idv }) => items.some(({ Id: idc }) => Idv === idc)
-    );
-    filteredPolicies.forEach(item => {
-      if (item["RegulatoryTopic"]) {
-        regulatoryTopicItems.push({
-          key: item["RegulatoryTopic"],
-          text: item["RegulatoryTopic"]
+  private dropDownRegulatoryTopic(items?): void {
+    const filedName = "RegulatoryTopic";
+    const regulatoryTopicDropDown = this.fillDropDown(items, filedName);
+    this.setState({ regulatoryTopicDropDown });
+  }
+
+  private dropDownMonth(items?): void {
+    const filedName = "Month";
+    const monthDropDown = this.fillDropDown(items, filedName);
+    this.setState({ monthDropDown });
+  }
+
+  private fillDropDown(items?, filedName?) {
+    let documentFiles = [];
+    items
+      ? documentFiles.push(...items)
+      : documentFiles.push(...this.state.documentFiles);
+    this.setState({ documentFiles });
+    let listBeforeSplit = [];
+    let listNoUnique = [];
+    documentFiles.forEach(item => {
+      if (item[filedName]) {
+        listBeforeSplit.push({
+          text: item[filedName]
         });
       }
     });
-
-    let uniqueItems = new Set(regulatoryTopicItems.map(unique => unique.text));
-    let regulatoryTopicDropDown = [];
-    uniqueItems.forEach(uniqueItem => {
-      regulatoryTopicDropDown.push({ key: uniqueItem, text: uniqueItem });
+    listBeforeSplit.forEach(element => {
+      element.text.split(";").forEach(split => {
+        listNoUnique.push(split);
+      });
     });
-    this.setState({ regulatoryTopicDropDown });
+
+    let uniqueItems = new Set(listNoUnique.map(unique => unique));
+    let dropDowResult = [];
+    uniqueItems.forEach(uniqueItem => {
+      dropDowResult.push({ key: uniqueItem, text: uniqueItem });
+    });
+    return dropDowResult;
   }
 
   private monthName() {

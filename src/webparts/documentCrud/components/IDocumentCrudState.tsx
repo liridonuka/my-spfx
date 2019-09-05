@@ -9,4 +9,6 @@ export interface IDocumentCrudState {
   joinRegulatoryTopicItems: IListItem[];
   regulatoryTopicDropDown: object[];
   stringRegulatoryTopic: string[];
+  monthDropDown: object[];
+  stringMonth: string[];
 }

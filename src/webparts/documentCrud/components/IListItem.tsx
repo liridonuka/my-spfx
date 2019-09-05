@@ -3,5 +3,8 @@ export interface IListItem {
   Name: string;
   DocumentLink: string;
   PolicyCategory: string;
+  RegulatoryTopic: string;
   ApprovedDate: string;
+  MonthDate: string;
+  YearDate: string;
 }
