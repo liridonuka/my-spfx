@@ -33,7 +33,8 @@ export default class DocumentCrud extends React.Component<
       regulatoryTopicDropDown: [],
       stringRegulatoryTopic: [],
       monthDropDown: [],
-      stringMonth: []
+      stringMonth: [],
+      source: 0
     };
   }
   public render(): React.ReactElement<ISearchMaskProps> {
@@ -50,7 +51,10 @@ export default class DocumentCrud extends React.Component<
             />
             <Dropdown
               placeHolder="Filter by regulatory topic"
-              onChanged={this.filterByRegulatoryTopic.bind(this)}
+              onChanged={this.filterByRegulatoryTopic.bind(
+                this,
+                this.state.source
+              )}
               multiSelect
               options={this.state.regulatoryTopicDropDown}
               // title={this.state.titleCategory}
@@ -168,7 +172,7 @@ export default class DocumentCrud extends React.Component<
     items
       ? documentFiles.push(...items)
       : documentFiles.push(...this.state.documentFiles);
-    this.setState({ documentFiles, joinPolicyCategoryItems: documentFiles });
+    // this.setState({ documentFiles, joinPolicyCategoryItems: documentFiles });
     let listBeforeSplit = [];
     let listNoUnique = [];
     documentFiles.forEach(item => {
@@ -213,6 +217,8 @@ export default class DocumentCrud extends React.Component<
     });
     this.setState({
       documentFiles:
+        stringPolicyCategory.length > 0 ? documentFiles : clonedList,
+      joinPolicyCategoryItems:
         stringPolicyCategory.length > 0 ? documentFiles : clonedList
     });
     this.dropDownRegulatoryTopic(
@@ -222,15 +228,21 @@ export default class DocumentCrud extends React.Component<
     //   stringPolicyCategory.length > 0 ? documentFiles : clonedList
     // );
   }
-  private filterByRegulatoryTopic(selectedItems) {
+  private filterByRegulatoryTopic(source, selectedItems) {
     const stringRegulatoryTopic = this.selectItems(
       selectedItems,
-      this.state.stringPolicyCategory
+      this.state.stringRegulatoryTopic
     );
     this.setState({
       stringRegulatoryTopic
     });
-    const clonedList = this.clonedList(this.state.joinPolicyCategoryItems);
+    const clonedList = this.clonedList(
+      stringRegulatoryTopic.length > 0
+        ? this.state.joinPolicyCategoryItems
+        : this.state.joinPolicyCategoryItems
+        ? this.state.joinPolicyCategoryItems
+        : this.state.documentFiles
+    );
     let filteredList = [];
     stringRegulatoryTopic.forEach(s => {
       clonedList
@@ -247,19 +259,21 @@ export default class DocumentCrud extends React.Component<
         stringRegulatoryTopic.length > 0 ? documentFiles : clonedList
     });
 
-    this.dropDownPolicyCategory(
-      stringRegulatoryTopic.length > 0 ? documentFiles : clonedList
-    );
+    // this.dropDownPolicyCategory(
+    //   stringRegulatoryTopic.length > 0 ? documentFiles : clonedList
+    // );
   }
   private selectItems(selectedItems, stringList) {
     let result = [...stringList];
     if (selectedItems.selected) {
       // add the option if it's checked
       result.push(selectedItems.text);
+      this.setState({ source: 1 });
     } else {
       // remove the option if it's unchecked
       const currIndex = result.indexOf(selectedItems.text);
       if (currIndex > -1) {
+        this.setState({ source: 0 });
         result.splice(currIndex, 1);
       }
     }

@@ -11,4 +11,5 @@ export interface ISearchMaskState {
   stringRegulatoryTopic: string[];
   monthDropDown: object[];
   stringMonth: string[];
+  source: number;
 }
