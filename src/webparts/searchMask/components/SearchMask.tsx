@@ -1,7 +1,7 @@
 import * as React from "react";
 import styles from "./SearchMask.module.scss";
 import { ISearchMaskProps } from "./ISearchMaskProps";
-import { escape } from "@microsoft/sp-lodash-subset";
+import { escape, times } from "@microsoft/sp-lodash-subset";
 import { ISearchMaskState } from "./ISearchMaskState";
 import { Web } from "@pnp/sp";
 import { Dropdown } from "office-ui-fabric-react/lib/Dropdown";
@@ -32,9 +32,14 @@ export default class DocumentCrud extends React.Component<
       joinRegulatoryTopicItems: [],
       regulatoryTopicDropDown: [],
       stringRegulatoryTopic: [],
+      joinYearItems: [],
+      yearDropDown: [],
+      stringYear: [],
       monthDropDown: [],
       stringMonth: [],
-      source: 0
+      anyPolicyCategorySelected: false,
+      anyRegulatoryTopicSelected: false,
+      anyYearSelected: false
     };
   }
   public render(): React.ReactElement<ISearchMaskProps> {
@@ -51,12 +56,16 @@ export default class DocumentCrud extends React.Component<
             />
             <Dropdown
               placeHolder="Filter by regulatory topic"
-              onChanged={this.filterByRegulatoryTopic.bind(
-                this,
-                this.state.source
-              )}
+              onChanged={this.filterByRegulatoryTopic.bind(this)}
               multiSelect
               options={this.state.regulatoryTopicDropDown}
+              // title={this.state.titleCategory}
+            />
+            <Dropdown
+              placeHolder="Filter by approval year"
+              onChanged={this.filterByYear.bind(this)}
+              multiSelect
+              options={this.state.yearDropDown}
               // title={this.state.titleCategory}
             />
           </div>
@@ -141,6 +150,7 @@ export default class DocumentCrud extends React.Component<
         RegulatoryTopic: policy.RegulatoryTopic
           ? policy.RegulatoryTopic.split("undefined;").pop()
           : "",
+        Year: new Date(policy.ApprovedDate).getFullYear().toString(),
         Month: monthNames[new Date(policy.ApprovedDate).getMonth()]
       });
     });
@@ -153,7 +163,7 @@ export default class DocumentCrud extends React.Component<
     });
     this.dropDownPolicyCategory(documentFiles);
     this.dropDownRegulatoryTopic();
-    // this.dropDownMonth();
+    this.dropDownDateYear();
   }
   //dropdowns
   private dropDownPolicyCategory(items?): void {
@@ -167,25 +177,31 @@ export default class DocumentCrud extends React.Component<
     const regulatoryTopicDropDown = this.fillDropDown(items, filedName);
     this.setState({ regulatoryTopicDropDown });
   }
+  private dropDownDateYear(items?): void {
+    const filedName = "Year";
+    const yearDropDown = this.fillDropDown(items, filedName);
+    this.setState({ yearDropDown });
+  }
   private fillDropDown(items?, filedName?) {
     let documentFiles = [];
     items
       ? documentFiles.push(...items)
       : documentFiles.push(...this.state.documentFiles);
-    // this.setState({ documentFiles, joinPolicyCategoryItems: documentFiles });
     let listBeforeSplit = [];
     let listNoUnique = [];
     documentFiles.forEach(item => {
       if (item[filedName]) {
         listBeforeSplit.push({
-          text: item[filedName]
+          text: ";" + item[filedName]
         });
       }
     });
 
     listBeforeSplit.forEach(element => {
       element.text.split(";").forEach(split => {
-        listNoUnique.push(split);
+        if (split) {
+          listNoUnique.push(split);
+        }
       });
     });
     let uniqueItems = new Set(listNoUnique.map(unique => unique));
@@ -203,7 +219,13 @@ export default class DocumentCrud extends React.Component<
     this.setState({
       stringPolicyCategory
     });
-    const clonedList = this.clonedList(this.state.internalPolicies);
+    const clonedList = this.clonedList(
+      this.state.anyRegulatoryTopicSelected || this.state.anyYearSelected
+        ? stringPolicyCategory.length > 0
+          ? this.state.joinPolicyCategoryItems
+          : this.state.joinPolicyCategoryItems
+        : this.state.internalPolicies
+    );
     let filteredList = [];
     stringPolicyCategory.forEach(s => {
       clonedList
@@ -218,17 +240,24 @@ export default class DocumentCrud extends React.Component<
     this.setState({
       documentFiles:
         stringPolicyCategory.length > 0 ? documentFiles : clonedList,
-      joinPolicyCategoryItems:
-        stringPolicyCategory.length > 0 ? documentFiles : clonedList
+      joinRegulatoryTopicItems:
+        stringPolicyCategory.length > 0 ? documentFiles : clonedList,
+      joinYearItems:
+        stringPolicyCategory.length > 0 ? documentFiles : clonedList,
+      anyPolicyCategorySelected: stringPolicyCategory.length > 0 ? true : false
     });
-    this.dropDownRegulatoryTopic(
-      stringPolicyCategory.length > 0 ? documentFiles : clonedList
-    );
-    // this.dropDownMonth(
-    //   stringPolicyCategory.length > 0 ? documentFiles : clonedList
-    // );
+    if (!this.state.anyRegulatoryTopicSelected) {
+      this.dropDownRegulatoryTopic(
+        stringPolicyCategory.length > 0 ? documentFiles : clonedList
+      );
+    }
+    if (!this.state.anyYearSelected) {
+      this.dropDownDateYear(
+        stringPolicyCategory.length > 0 ? documentFiles : clonedList
+      );
+    }
   }
-  private filterByRegulatoryTopic(source, selectedItems) {
+  private filterByRegulatoryTopic(selectedItems) {
     const stringRegulatoryTopic = this.selectItems(
       selectedItems,
       this.state.stringRegulatoryTopic
@@ -237,12 +266,13 @@ export default class DocumentCrud extends React.Component<
       stringRegulatoryTopic
     });
     const clonedList = this.clonedList(
-      stringRegulatoryTopic.length > 0
-        ? this.state.joinPolicyCategoryItems
-        : this.state.joinPolicyCategoryItems
-        ? this.state.joinPolicyCategoryItems
-        : this.state.documentFiles
+      this.state.anyPolicyCategorySelected || this.state.anyYearSelected
+        ? stringRegulatoryTopic.length > 0
+          ? this.state.joinRegulatoryTopicItems
+          : this.state.joinRegulatoryTopicItems
+        : this.state.internalPolicies
     );
+
     let filteredList = [];
     stringRegulatoryTopic.forEach(s => {
       clonedList
@@ -256,24 +286,80 @@ export default class DocumentCrud extends React.Component<
     });
     this.setState({
       documentFiles:
-        stringRegulatoryTopic.length > 0 ? documentFiles : clonedList
+        stringRegulatoryTopic.length > 0 ? documentFiles : clonedList,
+      joinPolicyCategoryItems:
+        stringRegulatoryTopic.length > 0 ? documentFiles : clonedList,
+      joinYearItems:
+        stringRegulatoryTopic.length > 0 ? documentFiles : clonedList,
+      anyRegulatoryTopicSelected:
+        stringRegulatoryTopic.length > 0 ? true : false
     });
 
-    // this.dropDownPolicyCategory(
-    //   stringRegulatoryTopic.length > 0 ? documentFiles : clonedList
-    // );
+    if (!this.state.anyPolicyCategorySelected) {
+      this.dropDownPolicyCategory(
+        stringRegulatoryTopic.length > 0 ? documentFiles : clonedList
+      );
+    }
+    if (!this.state.anyYearSelected) {
+      this.dropDownDateYear(
+        stringRegulatoryTopic.length > 0 ? documentFiles : clonedList
+      );
+    }
+  }
+  private filterByYear(selectedItems) {
+    const stringYear = this.selectItems(selectedItems, this.state.stringYear);
+    this.setState({
+      stringYear
+    });
+    const clonedList = this.clonedList(
+      this.state.anyPolicyCategorySelected ||
+        this.state.anyRegulatoryTopicSelected
+        ? stringYear.length > 0
+          ? this.state.joinYearItems
+          : this.state.joinYearItems
+        : this.state.internalPolicies
+    );
+
+    let filteredList = [];
+    stringYear.forEach(s => {
+      clonedList
+        .filter(f => f.Year.includes(s))
+        .map(item => filteredList.push(item));
+    });
+    let uniqueItems = new Set(filteredList.map(unique => unique));
+    let documentFiles = [];
+    uniqueItems.forEach(u => {
+      documentFiles.push(u);
+    });
+    this.setState({
+      documentFiles: stringYear.length > 0 ? documentFiles : clonedList,
+      joinPolicyCategoryItems:
+        stringYear.length > 0 ? documentFiles : clonedList,
+      joinRegulatoryTopicItems:
+        stringYear.length > 0 ? documentFiles : clonedList,
+      anyYearSelected: stringYear.length > 0 ? true : false
+    });
+
+    if (!this.state.anyPolicyCategorySelected) {
+      this.dropDownPolicyCategory(
+        stringYear.length > 0 ? documentFiles : clonedList
+      );
+    }
+    if (!this.state.anyRegulatoryTopicSelected) {
+      this.dropDownRegulatoryTopic(
+        stringYear.length > 0 ? documentFiles : clonedList
+      );
+    }
   }
   private selectItems(selectedItems, stringList) {
     let result = [...stringList];
     if (selectedItems.selected) {
       // add the option if it's checked
       result.push(selectedItems.text);
-      this.setState({ source: 1 });
     } else {
       // remove the option if it's unchecked
       const currIndex = result.indexOf(selectedItems.text);
       if (currIndex > -1) {
-        this.setState({ source: 0 });
         result.splice(currIndex, 1);
       }
     }
@@ -289,7 +375,8 @@ export default class DocumentCrud extends React.Component<
         DocumentLink: policy.DocumentLink,
         ApprovedDate: new Date(policy.ApprovedDate).toLocaleDateString(),
         PolicyCategory: policy.PolicyCategory,
-        RegulatoryTopic: policy.RegulatoryTopic
+        RegulatoryTopic: policy.RegulatoryTopic,
+        Year: policy.Year
       });
     });
     return list;

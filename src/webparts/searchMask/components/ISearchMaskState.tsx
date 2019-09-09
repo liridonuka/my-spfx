@@ -9,7 +9,12 @@ export interface ISearchMaskState {
   joinRegulatoryTopicItems: IListItem[];
   regulatoryTopicDropDown: object[];
   stringRegulatoryTopic: string[];
+  joinYearItems: IListItem[];
+  yearDropDown: object[];
+  stringYear: string[];
   monthDropDown: object[];
   stringMonth: string[];
-  source: number;
+  anyPolicyCategorySelected: boolean;
+  anyRegulatoryTopicSelected: boolean;
+  anyYearSelected: boolean;
 }
