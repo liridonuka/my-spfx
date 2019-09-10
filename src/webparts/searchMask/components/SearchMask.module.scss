@@ -1,4 +1,4 @@
-@import '~@microsoft/sp-office-ui-fabric-core/dist/sass/SPFabricCore.scss';
+@import "~@microsoft/sp-office-ui-fabric-core/dist/sass/SPFabricCore.scss";
 
 .searchMask {
   .container {
@@ -37,29 +37,153 @@
     @include ms-fontColor-white;
   }
 
+  .starCsm {
+    color: rgb(189, 155, 69);
+    text-decoration: none;
+    &:hover {
+      color: rgb(189, 155, 69);
+      font-weight: bolder;
+    }
+  }
+
+  .droping {
+    position: relative;
+    width: 100%;
+    display: inline-block;
+  }
+  .dropOne {
+    width: 49.5%;
+    float: left;
+  }
+  .dropTwo {
+    width: 50%;
+    float: right;
+  }
+
+  .readAll {
+    color: #f4f4f4;
+    float: right;
+    text-decoration: none;
+    padding-right: 5px;
+  }
+  .readAll:hover {
+    text-decoration: underline;
+  }
+
+  .linkPolicies {
+    text-decoration: none;
+    color: #393939;
+    // display: inline-block; /* the default for span */
+    padding: 5px;
+  }
+
+  .linkPolicies:hover {
+    text-decoration: underline;
+  }
+
+  .divax {
+    display: inline-block;
+  }
+
+  .droping .labela {
+    display: block;
+    padding-left: 15px;
+    // line-height: 1px;
+  }
+
+  .statusDivStyle {
+    // width: 100%;
+    background-color: #393939;
+    color: #f4f4f4;
+    padding: 15px;
+    display: tab;
+  }
+  .rowDivStyle {
+    padding: 10px;
+    background-color: #fff;
+    border: 0.3px solid rgb(243, 242, 242);
+    &:hover {
+      background-color: rgb(230, 230, 230);
+      border: 0.3px solid rgb(227, 227, 227);
+    }
+  }
+  .divaFav {
+    padding: 2px;
+    background-color: rgb(230, 230, 230);
+    border: 0.3px solid rgb(227, 227, 227);
+    zoom: 1.02;
+    font-weight: bolder;
+    &:hover {
+      background-color: rgb(230, 230, 230);
+      border: 0.3px solid rgb(227, 227, 227);
+    }
+  }
+  .spana {
+    display: inline-block; /* the default for span */
+    padding: 5px;
+  }
+
+  .spanaCal {
+    display: inline-block; /* the default for span */
+    padding: 5px;
+    font-size: 12px;
+    font-style: italic;
+  }
+  .blinking {
+    animation: opacity 1s ease-in-out infinite;
+    opacity: 1;
+    color: #619b3a;
+  }
+
+  .blinkingOff {
+    color: #619b3a;
+  }
+
+  @keyframes opacity {
+    0% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0;
+    }
+
+    100% {
+      opacity: 1;
+    }
+  }
   .button {
     // Our button
     text-decoration: none;
-    height: 32px;
-
-    // Primary Button
+    height: 38px;
+    font-weight: normal;
+    background-color: #f8e858;
+    color: black;
+    box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2),
+      0 6px 20px 0 rgba(0, 0, 0, 0.19);
     min-width: 80px;
-    background-color: $ms-color-themePrimary;
     border-color: $ms-color-themePrimary;
-    color: $ms-color-white;
 
     // Basic Button
     outline: transparent;
     position: relative;
-    font-family: "Segoe UI WestEuropean","Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,"Helvetica Neue",sans-serif;
+    font-family: "Segoe UI WestEuropean", "Segoe UI", -apple-system,
+      BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif;
     -webkit-font-smoothing: antialiased;
     font-size: $ms-font-size-m;
-    font-weight: $ms-font-weight-regular;
+    // font-weight: $ms-font-weight-regular;
     border-width: 0;
     text-align: center;
     cursor: pointer;
     display: inline-block;
-    padding: 0 16px;
+    padding: 0 10px;
+    padding-top: 5px;
+
+    &:hover {
+      color: black;
+      text-decoration: none;
+      background-color: #a0931b;
+    }
 
     .label {
       font-weight: $ms-font-weight-semibold;
@@ -69,6 +193,95 @@
       margin: 0 4px;
       vertical-align: top;
       display: inline-block;
+    }
+
+    &.disabled,
+    &:disabled {
+      background-color: #f4f4f4;
+      border-color: #f4f4f4;
+      cursor: default;
+      pointer-events: none;
+
+      .label {
+        color: #a6a6a6;
+      }
+    }
+
+    .showPolicy {
+      font-weight: normal;
+      background-color: #f8e858;
+      color: black;
+      box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2),
+        0 6px 20px 0 rgba(0, 0, 0, 0.19);
+    }
+    .showPolicy:hover {
+      background-color: #f8e85863;
+    }
+  }
+  #customers {
+    border-collapse: collapse;
+    width: 100%;
+    font-family: "Segoe UI", "Segoe UI Web (West European)", "Segoe UI",
+      -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif;
+  }
+
+  #customers td,
+  #customers th {
+    // border: 1px solid #f4f4f4;
+    padding: 8px;
+  }
+
+  #customers tr:nth-child(even) {
+    background-color: #f4f4f4;
+    color: rgb(105, 121, 126);
+  }
+
+  #customers tr:hover {
+    background-color: #f4f4f4;
+  }
+
+  #customers th {
+    padding-top: 12px;
+    padding-bottom: 12px;
+    text-align: left;
+    background-color: #fff200;
+    color: black;
+  }
+
+  .select {
+    position: relative;
+  }
+
+  .blueText {
+    font-family: "Segoe UI", "Segoe UI Web (West European)", "Segoe UI",
+      -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif;
+    background-color: #f4f4f4;
+    color: rgb(105, 121, 126);
+    width: 50%;
+    height: 35px;
+    font-weight: bolder;
+  }
+
+  .italic {
+    font-style: italic;
+  }
+
+  .divDisabled {
+    background-color: #f4f4f4;
+    border-color: #f4f4f4;
+    cursor: default;
+    pointer-events: none;
+    opacity: 0.2;
+  }
+
+  @media only screen and (max-width: 600px) {
+    .dropOne {
+      width: 100%;
+      // float: left;
+    }
+    .dropTwo {
+      width: 100%;
+      // float: right;
     }
   }
 }

@@ -12,9 +12,11 @@ export interface ISearchMaskState {
   joinYearItems: IListItem[];
   yearDropDown: object[];
   stringYear: string[];
+  joinMonthItems: IListItem[];
   monthDropDown: object[];
   stringMonth: string[];
   anyPolicyCategorySelected: boolean;
   anyRegulatoryTopicSelected: boolean;
   anyYearSelected: boolean;
+  anyMonthSelected: boolean;
 }
