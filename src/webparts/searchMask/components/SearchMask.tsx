@@ -97,26 +97,49 @@ export default class DocumentCrud extends React.Component<
 
             {this.state.documentFiles.map(document => (
               <div className={styles.rowDivStyle}>
-                <Icon iconName="AddBookmark" title="Add to bookmark" />
-                <Icon
-                  iconName="EntryView"
-                  title="Policy details"
-                  style={{ color: "#8a2c49" }}
-                />
+                <div
+                  style={{ display: "inline-block", verticalAlign: "middle" }}
+                >
+                  <Icon
+                    iconName="AddBookmark"
+                    title="Add to bookmark"
+                    // style={{ color: "#8e562e" }}
+                  />
+                  <Icon
+                    iconName="EntryView"
+                    title="Policy details"
+                    // style={{ color: "#8e562e" }}
+                  />
+                </div>
                 &nbsp;
-                <Icon
-                  title="New policy"
-                  iconName={
-                    parseFloat(document.Version) <= 1
-                      ? document.NewDocumentExpired < 7
-                        ? "glimmer"
+                <div
+                  style={{
+                    display: "inline-block",
+                    verticalAlign: "middle",
+                    paddingBottom: 15
+                  }}
+                >
+                  <Icon
+                    title="New policy"
+                    iconName={
+                      parseFloat(document.Version) <= 1
+                        ? document.NewDocumentExpired < 7
+                          ? "glimmer"
+                          : undefined
                         : undefined
-                      : undefined
-                  }
-                  style={{ color: "#c4c91a" }}
-                />
-                {document.PolicyNumber} {document.Name} {" v"}
-                {document.Version}
+                    }
+                    style={{ color: "red", fontWeight: "normal", fontSize: 11 }}
+                  />
+                </div>
+                <div
+                  style={{
+                    display: "inline-block",
+                    verticalAlign: "middle"
+                  }}
+                >
+                  {document.PolicyNumber} {document.Name} {" v"}
+                  {document.Version}
+                </div>
                 <div>
                   <div style={{ display: "inline-block" }}>
                     <Rating min={0} max={5} />
@@ -126,7 +149,7 @@ export default class DocumentCrud extends React.Component<
                     title="Approved date"
                     style={{ display: "inline-block", verticalAlign: "middle" }}
                   >
-                    <Icon iconName="Calendar" style={{ color: "#8a2c49" }} />
+                    <Icon iconName="Calendar" style={{ color: "#c50f1f" }} />
                     &nbsp;
                     <div
                       style={{
