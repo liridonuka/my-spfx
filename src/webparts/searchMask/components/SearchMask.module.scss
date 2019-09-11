@@ -74,7 +74,7 @@
     text-decoration: none;
     color: #393939;
     // display: inline-block; /* the default for span */
-    padding: 5px;
+    // padding: 5px;
   }
 
   .linkPolicies:hover {
@@ -272,6 +272,32 @@
     cursor: default;
     pointer-events: none;
     opacity: 0.2;
+  }
+
+  .policyInline {
+    display: inline-flex;
+    vertical-align: middle;
+  }
+  .divGlimmer {
+    padding-bottom: 15px;
+  }
+  .iconGlimmer {
+    color: red;
+    font-weight: normal;
+    font-size: 11;
+    position: relative;
+    bottom: 3px;
+  }
+  .iconCalendar {
+    padding-top: 3px;
+    color: #c50f1f;
+  }
+  .textApprovedDate {
+    padding-top: 3px;
+    font-size: 12px;
+  }
+  .rateDiv {
+    float: right;
   }
 
   @media only screen and (max-width: 600px) {

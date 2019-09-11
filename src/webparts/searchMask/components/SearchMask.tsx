@@ -97,28 +97,18 @@ export default class DocumentCrud extends React.Component<
 
             {this.state.documentFiles.map(document => (
               <div className={styles.rowDivStyle}>
-                <div
-                  style={{ display: "inline-block", verticalAlign: "middle" }}
-                >
+                <div className={styles.policyInline}>
+                  <Icon iconName="AddBookmark" title="Add to bookmark" />
+                  &nbsp;
                   <Icon
-                    iconName="AddBookmark"
-                    title="Add to bookmark"
-                    // style={{ color: "#8e562e" }}
-                  />
-                  <Icon
+                    onClick={() => this.entryView(document.Id)}
                     iconName="EntryView"
                     title="Policy details"
-                    // style={{ color: "#8e562e" }}
+                    style={{ cursor: "pointer" }}
                   />
                 </div>
                 &nbsp;
-                <div
-                  style={{
-                    display: "inline-block",
-                    verticalAlign: "middle",
-                    paddingBottom: 15
-                  }}
-                >
+                <div className={`${styles.policyInline} ${styles.divGlimmer}`}>
                   <Icon
                     title="New policy"
                     iconName={
@@ -128,54 +118,31 @@ export default class DocumentCrud extends React.Component<
                           : undefined
                         : undefined
                     }
-                    style={{ color: "red", fontWeight: "normal", fontSize: 11 }}
+                    className={styles.iconGlimmer}
                   />
                 </div>
-                <div
-                  style={{
-                    display: "inline-block",
-                    verticalAlign: "middle"
-                  }}
-                >
-                  {document.PolicyNumber} {document.Name} {" v"}
-                  {document.Version}
+                <div className={styles.policyInline}>
+                  <a
+                    className={styles.linkPolicies}
+                    href={document.DocumentLink}
+                  >
+                    {document.PolicyNumber} {document.Name} {" v"}
+                    {document.Version}
+                  </a>
                 </div>
                 <div>
-                  <div style={{ display: "inline-block" }}>
-                    <Rating min={0} max={5} />
-                  </div>
-                  &nbsp;
-                  <div
-                    title="Approved date"
-                    style={{ display: "inline-block", verticalAlign: "middle" }}
-                  >
-                    <Icon iconName="Calendar" style={{ color: "#c50f1f" }} />
+                  <div title="Approved date" className={styles.policyInline}>
+                    <Icon iconName="Calendar" className={styles.iconCalendar} />
                     &nbsp;
                     <div
-                      style={{
-                        display: "inline-block",
-                        verticalAlign: "middle",
-                        paddingBottom: 7,
-                        fontSize: 12
-                      }}
+                      className={`${styles.policyInline} ${styles.textApprovedDate}`}
                     >
                       {document.ApprovedDate}
                     </div>
                   </div>
                   &nbsp;
-                  <div
-                    style={{
-                      display: "inline-block",
-                      verticalAlign: "middle",
-                      paddingBottom: 7,
-                      fontSize: 12
-                    }}
-                  >
-                    {/* <Icon
-                      iconName={
-                        parseFloat(document.Version) <= 1 ? "glimmer" : ""
-                      }
-                    /> */}
+                  <div className={`${styles.policyInline} ${styles.rateDiv}`}>
+                    <Rating min={0} max={5} />
                   </div>
                 </div>
               </div>
@@ -335,7 +302,8 @@ export default class DocumentCrud extends React.Component<
       this.state.stringPolicyCategory
     );
     this.setState({
-      stringPolicyCategory
+      stringPolicyCategory,
+      status: "Loading all items..."
     });
     const clonedList = this.clonedList(
       this.state.anyRegulatoryTopicSelected ||
@@ -366,7 +334,12 @@ export default class DocumentCrud extends React.Component<
         stringPolicyCategory.length > 0 ? documentFiles : clonedList,
       joinMonthItems:
         stringPolicyCategory.length > 0 ? documentFiles : clonedList,
-      anyPolicyCategorySelected: stringPolicyCategory.length > 0 ? true : false
+      anyPolicyCategorySelected: stringPolicyCategory.length > 0 ? true : false,
+      status: `Successfully loaded ${
+        stringPolicyCategory.length > 0
+          ? documentFiles.length
+          : clonedList.length
+      } items`
     });
     if (!this.state.anyRegulatoryTopicSelected) {
       this.dropDownRegulatoryTopic(
@@ -390,7 +363,8 @@ export default class DocumentCrud extends React.Component<
       this.state.stringRegulatoryTopic
     );
     this.setState({
-      stringRegulatoryTopic
+      stringRegulatoryTopic,
+      status: "Loading all items..."
     });
     const clonedList = this.clonedList(
       this.state.anyPolicyCategorySelected ||
@@ -423,7 +397,12 @@ export default class DocumentCrud extends React.Component<
       joinMonthItems:
         stringRegulatoryTopic.length > 0 ? documentFiles : clonedList,
       anyRegulatoryTopicSelected:
-        stringRegulatoryTopic.length > 0 ? true : false
+        stringRegulatoryTopic.length > 0 ? true : false,
+      status: `Successfully loaded ${
+        stringRegulatoryTopic.length > 0
+          ? documentFiles.length
+          : clonedList.length
+      } items`
     });
 
     if (!this.state.anyPolicyCategorySelected) {
@@ -445,7 +424,8 @@ export default class DocumentCrud extends React.Component<
   private filterByYear(selectedItems) {
     const stringYear = this.selectItems(selectedItems, this.state.stringYear);
     this.setState({
-      stringYear
+      stringYear,
+      status: "Loading all items..."
     });
     const clonedList = this.clonedList(
       this.state.anyPolicyCategorySelected ||
@@ -475,7 +455,10 @@ export default class DocumentCrud extends React.Component<
       joinRegulatoryTopicItems:
         stringYear.length > 0 ? documentFiles : clonedList,
       joinMonthItems: stringYear.length > 0 ? documentFiles : clonedList,
-      anyYearSelected: stringYear.length > 0 ? true : false
+      anyYearSelected: stringYear.length > 0 ? true : false,
+      status: `Successfully loaded ${
+        stringYear.length > 0 ? documentFiles.length : clonedList.length
+      } items`
     });
 
     if (!this.state.anyPolicyCategorySelected) {
@@ -497,7 +480,8 @@ export default class DocumentCrud extends React.Component<
   private filterByMonth(selectedItems) {
     const stringMonth = this.selectItems(selectedItems, this.state.stringMonth);
     this.setState({
-      stringMonth
+      stringMonth,
+      status: "Loading all items..."
     });
     const clonedList = this.clonedList(
       this.state.anyPolicyCategorySelected ||
@@ -526,7 +510,10 @@ export default class DocumentCrud extends React.Component<
       joinRegulatoryTopicItems:
         stringMonth.length > 0 ? documentFiles : clonedList,
       joinYearItems: stringMonth.length > 0 ? documentFiles : clonedList,
-      anyMonthSelected: stringMonth.length > 0 ? true : false
+      anyMonthSelected: stringMonth.length > 0 ? true : false,
+      status: `Successfully loaded ${
+        stringMonth.length > 0 ? documentFiles.length : clonedList.length
+      } items`
     });
 
     if (!this.state.anyPolicyCategorySelected) {
@@ -602,6 +589,13 @@ export default class DocumentCrud extends React.Component<
     const diffTime = Math.abs(date2.getTime() - date1.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
+  }
+  private entryView(id): void {
+    const url = `${
+      this.props.context.pageContext.web.absoluteUrl
+    }/${this.props.listName.replace(/ +/g, "")}/Forms/DispForm.aspx?ID=${id}`;
+    console.log(url);
+    window.open(url, "_blank");
   }
   private listNotConfigured(props: ISearchMaskProps): boolean {
     return (
