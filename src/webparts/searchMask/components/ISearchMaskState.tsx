@@ -1,8 +1,9 @@
-import { IListItem } from "./IListItem";
+import { IListItem, IPolicyUser } from "./IListItem";
 export interface ISearchMaskState {
   status: string;
   internalPolicies: IListItem[];
   documentFiles: IListItem[];
+  policyUser: IPolicyUser[];
   joinPolicyCategoryItems: IListItem[];
   policyCategoryDropDown: object[];
   stringPolicyCategory: string[];

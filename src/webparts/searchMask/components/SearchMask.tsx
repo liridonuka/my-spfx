@@ -30,6 +30,7 @@ export default class DocumentCrud extends React.Component<
         : "Ready",
       internalPolicies: [],
       documentFiles: [],
+      policyUser: [],
       joinPolicyCategoryItems: [],
       policyCategoryDropDown: [],
       stringPolicyCategory: [],
@@ -189,16 +190,17 @@ export default class DocumentCrud extends React.Component<
       })
       .then(
         (result: ItemAddResult): void => {
-          const item: IPolicyUser = result.data as IPolicyUser;
-          const documentFiles = this.leftOuterJoinPolicyUser(
-            policies,
-            item.PolicyNumber,
-            item.Favorite
-          );
-
-          this.setState({
-            documentFiles,
-            status: `${title} was added to favorites`
+          // const item: IPolicyUser = result.data as IPolicyUser;
+          const policyUser = this.connectAndReadPolicyUser();
+          policyUser.then(policiesUser => {
+            const documentFiles = this.leftOuterJoinPolicyUser(
+              policies,
+              policiesUser
+            );
+            this.setState({
+              documentFiles,
+              status: `${title} was added to favorites`
+            });
           });
         },
         (error: any): void => {
@@ -208,17 +210,17 @@ export default class DocumentCrud extends React.Component<
         }
       );
   }
-  private connectAndReadPolicyUser(): void {
+  private connectAndReadPolicyUser() {
     const ama = this.getCurretUser();
-    ama.then(userId => {
+    return ama.then(userId => {
       const web = new Web(this.props.context.pageContext.web.absoluteUrl);
-      web.lists
+      return web.lists
         .getByTitle("PolicyUser")
         .items.filter(`AuthorId eq '${userId}'`)
         .get()
         .then(
-          items => {
-            this.policyUserObj(items);
+          policyUser => {
+            return policyUser;
           },
           (error: any): void => {
             this.setState({
@@ -249,7 +251,7 @@ export default class DocumentCrud extends React.Component<
   }
   private getPolicies(items): void {
     const monthNames = this.monthName();
-    let documentFiles = [];
+    let documents = [];
     let joinPolicyCategoryItems = [];
     let joinRegulatoryTopicItems = [];
     let itemList = [];
@@ -287,7 +289,7 @@ export default class DocumentCrud extends React.Component<
     });
     itemList.forEach(policy => {
       const diffDays = this.getDiffDays(policy.ApprovedDate);
-      documentFiles.push({
+      documents.push({
         Id: policy.Id,
         PolicyNumber: policy.PolicyNumber,
         Name: policy.Name,
@@ -305,17 +307,24 @@ export default class DocumentCrud extends React.Component<
         NewDocumentExpired: policy.ApprovedDate ? diffDays : undefined
       });
     });
-    this.setState({
-      documentFiles,
-      internalPolicies: documentFiles,
-      joinPolicyCategoryItems,
-      joinRegulatoryTopicItems,
-      status: `Successfully loaded ${documentFiles.length} items`
+    const policyUser = this.connectAndReadPolicyUser();
+    policyUser.then(policiesUser => {
+      const documentFiles = this.leftOuterJoinPolicyUser(
+        documents,
+        policiesUser
+      );
+      this.setState({
+        documentFiles,
+        internalPolicies: documentFiles,
+        joinPolicyCategoryItems,
+        joinRegulatoryTopicItems,
+        status: `Successfully loaded ${documentFiles.length} items`
+      });
+      this.dropDownPolicyCategory(documentFiles);
+      this.dropDownRegulatoryTopic();
+      this.dropDownDateYear();
+      this.dropDownDateMonth();
     });
-    this.dropDownPolicyCategory(documentFiles);
-    this.dropDownRegulatoryTopic();
-    this.dropDownDateYear();
-    this.dropDownDateMonth();
   }
   //dropdowns
   private dropDownPolicyCategory(items?): void {
@@ -633,7 +642,8 @@ export default class DocumentCrud extends React.Component<
         RegulatoryTopic: policy.RegulatoryTopic,
         Year: policy.Year,
         Month: policy.Month,
-        NewDocumentExpired: policy.NewDocumentExpired
+        NewDocumentExpired: policy.NewDocumentExpired,
+        Favorite: policy.Favorite
       });
     });
     return list;
@@ -676,7 +686,7 @@ export default class DocumentCrud extends React.Component<
     });
   }
   private policyUserObj(response) {
-    console.log(response);
+    // console.log(response);
     var policyUserList = [];
     response.forEach(element => {
       policyUserList.push({
@@ -689,27 +699,31 @@ export default class DocumentCrud extends React.Component<
     });
     return policyUserList;
   }
-  private leftOuterJoinPolicyUser(a, userPolicyId, response) {
+  private leftOuterJoinPolicyUser(a, b) {
+    console.log(b);
     let result = [];
     a.forEach(policy => {
       let found = false;
-      if (policy.Id === userPolicyId) {
-        result.push({
-          Id: policy.Id,
-          PolicyNumber: policy.PolicyNumber,
-          Name: policy.Name,
-          Version: policy.Version,
-          DocumentLink: policy.DocumentLink,
-          ApprovedDate: policy.ApprovedDate,
-          PolicyCategory: policy.PolicyCategory,
-          RegulatoryTopic: policy.RegulatoryTopic,
-          Year: policy.Year,
-          Month: policy.Month,
-          NewDocumentExpired: policy.NewDocumentExpired,
-          Favorite: response
-        });
-        found = true;
-      }
+      b.forEach(policyUser => {
+        if (policy.Id === policyUser.PolicyNumber) {
+          result.push({
+            Id: policy.Id,
+            PolicyNumber: policy.PolicyNumber,
+            Name: policy.Name,
+            Version: policy.Version,
+            DocumentLink: policy.DocumentLink,
+            ApprovedDate: policy.ApprovedDate,
+            PolicyCategory: policy.PolicyCategory,
+            RegulatoryTopic: policy.RegulatoryTopic,
+            Year: policy.Year,
+            Month: policy.Month,
+            NewDocumentExpired: policy.NewDocumentExpired,
+            Favorite: policyUser.Favorite
+          });
+          found = true;
+        }
+      });
+
       if (found === false) {
         result.push({
           Id: policy.Id,
