@@ -1,12 +1,14 @@
 import * as React from "react";
 import styles from "./SearchMask.module.scss";
 import { ISearchMaskProps } from "./ISearchMaskProps";
-import { escape, times } from "@microsoft/sp-lodash-subset";
+import { escape, times, isEqual } from "@microsoft/sp-lodash-subset";
 import { ISearchMaskState } from "./ISearchMaskState";
-import { Web } from "@pnp/sp";
+import { Web, ItemAddResult, sp } from "@pnp/sp";
 import { Dropdown } from "office-ui-fabric-react/lib/Dropdown";
 import { Icon } from "office-ui-fabric-react/lib/Icon";
 import { Rating, RatingSize } from "office-ui-fabric-react/lib/Rating";
+import { IListItem, IPolicyUser } from "./IListItem";
+import { arraysEqual } from "@uifabric/utilities/lib";
 export default class DocumentCrud extends React.Component<
   ISearchMaskProps,
   ISearchMaskState
@@ -98,7 +100,23 @@ export default class DocumentCrud extends React.Component<
             {this.state.documentFiles.map(document => (
               <div className={styles.rowDivStyle}>
                 <div className={styles.policyInline}>
-                  <Icon iconName="AddBookmark" title="Add to bookmark" />
+                  <Icon
+                    onClick={() =>
+                      this.addToFavorite(
+                        document.Name,
+                        document.Id,
+                        document.DocumentLink,
+                        this.state.documentFiles
+                      )
+                    }
+                    iconName={
+                      document.Favorite === 1
+                        ? "SingleBookmarkSolid"
+                        : "AddBookmark"
+                    }
+                    title="Add to bookmark"
+                    style={{ cursor: "pointer" }}
+                  />
                   &nbsp;
                   <Icon
                     onClick={() => this.entryView(document.Id)}
@@ -153,19 +171,73 @@ export default class DocumentCrud extends React.Component<
     );
   }
   public componentWillMount() {
-    this.connectAndRead();
+    this.connectAndReadPolicies();
+    this.connectAndReadPolicyUser();
+    // this.getCurretUser();
+  }
+  private addToFavorite(title, policyNumber, docLink, policies): void {
+    this.setState({ status: "Adding to favorites..." });
+    let web = new Web(this.props.context.pageContext.web.absoluteUrl);
+    web.lists
+      .getByTitle("PolicyUser")
+      .items.add({
+        Title: title,
+        PolicyNumber: policyNumber,
+        Favorite: 1,
+        Policy: title,
+        PolicyLink: docLink
+      })
+      .then(
+        (result: ItemAddResult): void => {
+          const item: IPolicyUser = result.data as IPolicyUser;
+          const documentFiles = this.leftOuterJoinPolicyUser(
+            policies,
+            item.PolicyNumber,
+            item.Favorite
+          );
+
+          this.setState({
+            documentFiles,
+            status: `${title} was added to favorites`
+          });
+        },
+        (error: any): void => {
+          this.setState({
+            status: "Error while adding to favorites: " + error
+          });
+        }
+      );
+  }
+  private connectAndReadPolicyUser(): void {
+    const ama = this.getCurretUser();
+    ama.then(userId => {
+      const web = new Web(this.props.context.pageContext.web.absoluteUrl);
+      web.lists
+        .getByTitle("PolicyUser")
+        .items.filter(`AuthorId eq '${userId}'`)
+        .get()
+        .then(
+          items => {
+            this.policyUserObj(items);
+          },
+          (error: any): void => {
+            this.setState({
+              status: "Loading all items failed with error: " + error
+            });
+          }
+        );
+    });
   }
 
-  private connectAndRead(): void {
+  private connectAndReadPolicies(): void {
     this.setState({ documentFiles: [], status: "Loading all items..." });
-    let web = new Web(this.props.context.pageContext.web.absoluteUrl);
+    const web = new Web(this.props.context.pageContext.web.absoluteUrl);
     web.lists
       .getByTitle(this.props.listName)
       .items.expand("File")
       .getAll()
       .then(
         items => {
-          console.log(items);
           this.getPolicies(items);
         },
         (error: any): void => {
@@ -187,7 +259,7 @@ export default class DocumentCrud extends React.Component<
         PolicyNumber: policy.Policy_x0020_Number,
         Name: policy.File.Name,
         Version: policy.OData__UIVersionString,
-        DocumentLink: policy.File.LinkingUrl,
+        DocumentLink: policy.ServerRedirectedEmbedUrl,
         ApprovedDate: policy.Date_x0020_of_x0020_approval
       });
       policy.Policy_x0020_Category.forEach(policyCategory => {
@@ -594,8 +666,68 @@ export default class DocumentCrud extends React.Component<
     const url = `${
       this.props.context.pageContext.web.absoluteUrl
     }/${this.props.listName.replace(/ +/g, "")}/Forms/DispForm.aspx?ID=${id}`;
-    console.log(url);
     window.open(url, "_blank");
+  }
+  private getCurretUser() {
+    const userEmail = this.props.context.pageContext.user.email;
+    const web = new Web(this.props.context.pageContext.web.absoluteUrl);
+    return web.ensureUser(userEmail).then(result => {
+      return result.data.Id;
+    });
+  }
+  private policyUserObj(response) {
+    console.log(response);
+    var policyUserList = [];
+    response.forEach(element => {
+      policyUserList.push({
+        PolicyNumber: element.PolicyNumber,
+        Title: element.Title,
+        Favorite: element.Favorite,
+        Rate: element.Rate,
+        Comment: element.Comment
+      });
+    });
+    return policyUserList;
+  }
+  private leftOuterJoinPolicyUser(a, userPolicyId, response) {
+    let result = [];
+    a.forEach(policy => {
+      let found = false;
+      if (policy.Id === userPolicyId) {
+        result.push({
+          Id: policy.Id,
+          PolicyNumber: policy.PolicyNumber,
+          Name: policy.Name,
+          Version: policy.Version,
+          DocumentLink: policy.DocumentLink,
+          ApprovedDate: policy.ApprovedDate,
+          PolicyCategory: policy.PolicyCategory,
+          RegulatoryTopic: policy.RegulatoryTopic,
+          Year: policy.Year,
+          Month: policy.Month,
+          NewDocumentExpired: policy.NewDocumentExpired,
+          Favorite: response
+        });
+        found = true;
+      }
+      if (found === false) {
+        result.push({
+          Id: policy.Id,
+          PolicyNumber: policy.PolicyNumber,
+          Name: policy.Name,
+          Version: policy.Version,
+          DocumentLink: policy.DocumentLink,
+          ApprovedDate: policy.ApprovedDate,
+          PolicyCategory: policy.PolicyCategory,
+          RegulatoryTopic: policy.RegulatoryTopic,
+          Year: policy.Year,
+          Month: policy.Month,
+          NewDocumentExpired: policy.NewDocumentExpired,
+          Favorite: 0
+        });
+      }
+    });
+    return result;
   }
   private listNotConfigured(props: ISearchMaskProps): boolean {
     return (
