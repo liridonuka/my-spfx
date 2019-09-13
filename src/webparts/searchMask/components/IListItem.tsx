@@ -11,6 +11,7 @@ export interface IListItem {
   YearDate: string;
   NewDocumentExpired: number;
   Favorite: number;
+  Rate: number;
 }
 
 export interface IPolicyUser {

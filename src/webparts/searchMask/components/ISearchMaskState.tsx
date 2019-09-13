@@ -1,6 +1,7 @@
 import { IListItem, IPolicyUser } from "./IListItem";
 export interface ISearchMaskState {
   status: string;
+  statusIndicator: number;
   internalPolicies: IListItem[];
   documentFiles: IListItem[];
   policyUser: IPolicyUser[];

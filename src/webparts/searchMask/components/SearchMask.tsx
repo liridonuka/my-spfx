@@ -7,6 +7,7 @@ import { Web, ItemAddResult, sp } from "@pnp/sp";
 import { Dropdown } from "office-ui-fabric-react/lib/Dropdown";
 import { Icon } from "office-ui-fabric-react/lib/Icon";
 import { Rating, RatingSize } from "office-ui-fabric-react/lib/Rating";
+import { Spinner, SpinnerSize } from "office-ui-fabric-react/lib/Spinner";
 import { IListItem, IPolicyUser } from "./IListItem";
 import { arraysEqual } from "@uifabric/utilities/lib";
 export default class DocumentCrud extends React.Component<
@@ -28,6 +29,7 @@ export default class DocumentCrud extends React.Component<
       status: this.listNotConfigured(this.props)
         ? "Please configure list in Web Part properties"
         : "Ready",
+      statusIndicator: 1,
       internalPolicies: [],
       documentFiles: [],
       policyUser: [],
@@ -95,20 +97,47 @@ export default class DocumentCrud extends React.Component<
               </div>
             </div>
           </div>
-          <div>
+          {this.state.statusIndicator === 0 ? (
+            <div
+              style={{
+                position: "fixed",
+                paddingLeft: "370px",
+                paddingTop: "150px",
+                color: "#393939"
+              }}
+            >
+              <p>Wait...</p>
+              <Spinner size={SpinnerSize.large} />
+            </div>
+          ) : (
+            undefined
+          )}
+          <div
+            className={
+              this.state.statusIndicator === 0 ? styles.divDisabled : undefined
+            }
+          >
             <div className={styles.statusDivStyle}>{this.state.status}</div>
 
             {this.state.documentFiles.map(document => (
               <div className={styles.rowDivStyle}>
                 <div className={styles.policyInline}>
                   <Icon
-                    onClick={() =>
-                      this.addToFavorite(
-                        document.Name,
-                        document.Id,
-                        document.DocumentLink,
-                        this.state.documentFiles
-                      )
+                    onClick={
+                      document.Favorite !== 1
+                        ? () =>
+                            this.addToFavorite(
+                              document.Name,
+                              document.Id,
+                              document.DocumentLink,
+                              this.state.documentFiles
+                            )
+                        : () =>
+                            this.removeFromFavorites(
+                              document.Name,
+                              document.Id,
+                              this.state.documentFiles
+                            )
                     }
                     iconName={
                       document.Favorite === 1
@@ -161,7 +190,20 @@ export default class DocumentCrud extends React.Component<
                   </div>
                   &nbsp;
                   <div className={`${styles.policyInline} ${styles.rateDiv}`}>
-                    <Rating min={0} max={5} />
+                    <Rating
+                      min={0}
+                      max={5}
+                      rating={document.Rate}
+                      onChanged={
+                        document.Rate || document.Favorite
+                          ? this.updateRate.bind(
+                              this,
+                              document.Id,
+                              this.state.documentFiles
+                            )
+                          : undefined
+                      }
+                    />
                   </div>
                 </div>
               </div>
@@ -176,8 +218,47 @@ export default class DocumentCrud extends React.Component<
     this.connectAndReadPolicyUser();
     // this.getCurretUser();
   }
+  private updateRate(policyNumber, policies, rate): void {
+    console.log(rate, policyNumber);
+    this.setState({ statusIndicator: 0 });
+    const selectedPolicy = this.connectAndReadPolicyUserById(policyNumber);
+    selectedPolicy.then(selected => {
+      let web = new Web(this.props.context.pageContext.web.absoluteUrl);
+      web.lists
+        .getByTitle("PolicyUser")
+        .items.getById(selected)
+        .update({
+          Rate: rate
+        })
+        .then(
+          (result: ItemAddResult): void => {
+            // const item: IPolicyUser = result.data as IPolicyUser;
+            const policyUser = this.connectAndReadPolicyUser();
+            policyUser.then(policiesUser => {
+              const documents = this.leftOuterJoinPolicyUser(
+                policies,
+                policiesUser
+              );
+              const documentFiles = this.setStateAvgRate(
+                policiesUser,
+                documents
+              );
+              this.setState({
+                documentFiles,
+                statusIndicator: 1
+              });
+            });
+          },
+          (error: any): void => {
+            this.setState({
+              status: "Error while adding to favorites: " + error
+            });
+          }
+        );
+    });
+  }
   private addToFavorite(title, policyNumber, docLink, policies): void {
-    this.setState({ status: "Adding to favorites..." });
+    this.setState({ status: "Adding to favorites...", statusIndicator: 0 });
     let web = new Web(this.props.context.pageContext.web.absoluteUrl);
     web.lists
       .getByTitle("PolicyUser")
@@ -193,13 +274,15 @@ export default class DocumentCrud extends React.Component<
           // const item: IPolicyUser = result.data as IPolicyUser;
           const policyUser = this.connectAndReadPolicyUser();
           policyUser.then(policiesUser => {
-            const documentFiles = this.leftOuterJoinPolicyUser(
+            const documents = this.leftOuterJoinPolicyUser(
               policies,
               policiesUser
             );
+            const documentFiles = this.setStateAvgRate(policiesUser, documents);
             this.setState({
               documentFiles,
-              status: `${title} was added to favorites`
+              status: `${title} was added to favorites`,
+              statusIndicator: 1
             });
           });
         },
@@ -209,6 +292,114 @@ export default class DocumentCrud extends React.Component<
           });
         }
       );
+  }
+  private updateFavorites(title, policyNumber, policies): void {
+    this.setState({ status: "Updating favorites...", statusIndicator: 0 });
+    const selectedPolicy = this.connectAndReadPolicyUserById(policyNumber);
+    selectedPolicy.then(selected => {
+      let web = new Web(this.props.context.pageContext.web.absoluteUrl);
+      web.lists
+        .getByTitle("PolicyUser")
+        .items.getById(selected)
+        .update({
+          Favorite: 0
+        })
+        .then(
+          (result: ItemAddResult): void => {
+            // const item: IPolicyUser = result.data as IPolicyUser;
+            const policyUser = this.connectAndReadPolicyUser();
+            policyUser.then(policiesUser => {
+              const documents = this.leftOuterJoinPolicyUser(
+                policies,
+                policiesUser
+              );
+              const documentFiles = this.setStateAvgRate(
+                policiesUser,
+                documents
+              );
+              this.setState({
+                documentFiles,
+                status: `${title} Updated`,
+                statusIndicator: 1
+              });
+            });
+          },
+          (error: any): void => {
+            this.setState({
+              status: "Error while adding to favorites: " + error
+            });
+          }
+        );
+    });
+  }
+  private removeFromFavorites(title, policyNumber, policies): void {
+    this.setState({ status: "Updating favorites...", statusIndicator: 0 });
+    const selectedPolicy = this.connectAndReadPolicyUserById(policyNumber);
+    selectedPolicy.then(selected => {
+      let web = new Web(this.props.context.pageContext.web.absoluteUrl);
+      web.lists
+        .getByTitle("PolicyUser")
+        .items.getById(selected)
+        .delete()
+        .then(
+          result => {
+            // const item: IPolicyUser = result.data as IPolicyUser;
+            const policyUser = this.connectAndReadPolicyUser();
+            policyUser.then(policiesUser => {
+              const documents = this.leftOuterJoinPolicyUser(
+                policies,
+                policiesUser
+              );
+              const documentFiles = this.setStateAvgRate(
+                policiesUser,
+                documents
+              );
+              this.setState({
+                documentFiles,
+                status: `${title} was removed from favorites`,
+                statusIndicator: 1
+              });
+            });
+          },
+          (error: any): void => {
+            this.setState({
+              status: "Error while adding to favorites: " + error
+            });
+          }
+        );
+    });
+  }
+  private connectAndReadPolicyUserById(policyNumber) {
+    const ama = this.getCurretUser();
+    return ama.then(userId => {
+      const web = new Web(this.props.context.pageContext.web.absoluteUrl);
+      return new Promise<number>(
+        (
+          resolve: (itemId: number) => void,
+          reject: (error: any) => void
+        ): void => {
+          web.lists
+            .getByTitle("PolicyUser")
+            .items.filter(
+              `AuthorId eq '${userId}' and PolicyNumber eq '${policyNumber}'`
+            )
+            .select("Id")
+            .get()
+            .then(
+              (items: { Id: number }[]): void => {
+                if (items.length === 0) {
+                  resolve(-1);
+                } else {
+                  resolve(items[0].Id);
+                }
+              },
+              (error: any): void => {
+                reject(error);
+              }
+            );
+        }
+      );
+    });
   }
   private connectAndReadPolicyUser() {
     const ama = this.getCurretUser();
@@ -251,7 +442,7 @@ export default class DocumentCrud extends React.Component<
   }
   private getPolicies(items): void {
     const monthNames = this.monthName();
-    let documents = [];
+    let policies = [];
     let joinPolicyCategoryItems = [];
     let joinRegulatoryTopicItems = [];
     let itemList = [];
@@ -289,7 +480,7 @@ export default class DocumentCrud extends React.Component<
     });
     itemList.forEach(policy => {
       const diffDays = this.getDiffDays(policy.ApprovedDate);
-      documents.push({
+      policies.push({
         Id: policy.Id,
         PolicyNumber: policy.PolicyNumber,
         Name: policy.Name,
@@ -309,10 +500,8 @@ export default class DocumentCrud extends React.Component<
     });
     const policyUser = this.connectAndReadPolicyUser();
     policyUser.then(policiesUser => {
-      const documentFiles = this.leftOuterJoinPolicyUser(
-        documents,
-        policiesUser
-      );
+      const documents = this.leftOuterJoinPolicyUser(policies, policiesUser);
+      const documentFiles = this.setStateAvgRate(policiesUser, documents);
       this.setState({
         documentFiles,
         internalPolicies: documentFiles,
@@ -321,9 +510,9 @@ export default class DocumentCrud extends React.Component<
         status: `Successfully loaded ${documentFiles.length} items`
       });
       this.dropDownPolicyCategory(documentFiles);
-      this.dropDownRegulatoryTopic();
-      this.dropDownDateYear();
-      this.dropDownDateMonth();
+      this.dropDownRegulatoryTopic(documentFiles);
+      this.dropDownDateYear(documentFiles);
+      this.dropDownDateMonth(documentFiles);
     });
   }
   //dropdowns
@@ -384,9 +573,10 @@ export default class DocumentCrud extends React.Component<
     );
     this.setState({
       stringPolicyCategory,
+      statusIndicator: 0,
       status: "Loading all items..."
     });
-    const clonedList = this.clonedList(
+    const cloned = this.clonedList(
       this.state.anyRegulatoryTopicSelected ||
         this.state.anyYearSelected ||
         this.state.anyMonthSelected
@@ -395,48 +585,62 @@ export default class DocumentCrud extends React.Component<
           : this.state.joinPolicyCategoryItems
         : this.state.internalPolicies
     );
-    let filteredList = [];
-    stringPolicyCategory.forEach(s => {
-      clonedList
-        .filter(f => f.PolicyCategory.includes(s))
-        .map(item => filteredList.push(item));
-    });
-    let uniqueItems = new Set(filteredList.map(unique => unique));
-    let documentFiles = [];
-    uniqueItems.forEach(u => {
-      documentFiles.push(u);
-    });
-    this.setState({
-      documentFiles:
-        stringPolicyCategory.length > 0 ? documentFiles : clonedList,
-      joinRegulatoryTopicItems:
-        stringPolicyCategory.length > 0 ? documentFiles : clonedList,
-      joinYearItems:
-        stringPolicyCategory.length > 0 ? documentFiles : clonedList,
-      joinMonthItems:
-        stringPolicyCategory.length > 0 ? documentFiles : clonedList,
-      anyPolicyCategorySelected: stringPolicyCategory.length > 0 ? true : false,
-      status: `Successfully loaded ${
-        stringPolicyCategory.length > 0
-          ? documentFiles.length
-          : clonedList.length
-      } items`
-    });
-    if (!this.state.anyRegulatoryTopicSelected) {
-      this.dropDownRegulatoryTopic(
-        stringPolicyCategory.length > 0 ? documentFiles : clonedList
+    const policyUser = this.connectAndReadPolicyUser();
+    policyUser.then(policiesUser => {
+      const clonedListWithFavorite = this.leftOuterJoinPolicyUser(
+        cloned,
+        policiesUser
       );
-    }
-    if (!this.state.anyYearSelected) {
-      this.dropDownDateYear(
-        stringPolicyCategory.length > 0 ? documentFiles : clonedList
+      const clonedList = this.setStateAvgRate(
+        policiesUser,
+        clonedListWithFavorite
       );
-    }
-    if (!this.state.anyMonthSelected) {
-      this.dropDownDateMonth(
-        stringPolicyCategory.length > 0 ? documentFiles : clonedList
-      );
-    }
+      let filteredList = [];
+      stringPolicyCategory.forEach(s => {
+        clonedList
+          .filter(f => f.PolicyCategory.includes(s))
+          .map(item => filteredList.push(item));
+      });
+      let uniqueItems = new Set(filteredList.map(unique => unique));
+      let documentFiles = [];
+      uniqueItems.forEach(u => {
+        documentFiles.push(u);
+      });
+
+      this.setState({
+        documentFiles:
+          stringPolicyCategory.length > 0 ? documentFiles : clonedList,
+        joinRegulatoryTopicItems:
+          stringPolicyCategory.length > 0 ? documentFiles : clonedList,
+        joinYearItems:
+          stringPolicyCategory.length > 0 ? documentFiles : clonedList,
+        joinMonthItems:
+          stringPolicyCategory.length > 0 ? documentFiles : clonedList,
+        anyPolicyCategorySelected:
+          stringPolicyCategory.length > 0 ? true : false,
+        status: `Successfully loaded ${
+          stringPolicyCategory.length > 0
+            ? documentFiles.length
+            : clonedList.length
+        } items`,
+        statusIndicator: 1
+      });
+      if (!this.state.anyRegulatoryTopicSelected) {
+        this.dropDownRegulatoryTopic(
+          stringPolicyCategory.length > 0 ? documentFiles : clonedList
+        );
+      }
+      if (!this.state.anyYearSelected) {
+        this.dropDownDateYear(
+          stringPolicyCategory.length > 0 ? documentFiles : clonedList
+        );
+      }
+      if (!this.state.anyMonthSelected) {
+        this.dropDownDateMonth(
+          stringPolicyCategory.length > 0 ? documentFiles : clonedList
+        );
+      }
+    });
   }
   private filterByRegulatoryTopic(selectedItems) {
     const stringRegulatoryTopic = this.selectItems(
@@ -445,9 +649,10 @@ export default class DocumentCrud extends React.Component<
     );
     this.setState({
       stringRegulatoryTopic,
+      statusIndicator: 0,
       status: "Loading all items..."
     });
-    const clonedList = this.clonedList(
+    const cloned = this.clonedList(
       this.state.anyPolicyCategorySelected ||
         this.state.anyYearSelected ||
         this.state.anyMonthSelected
@@ -456,59 +661,71 @@ export default class DocumentCrud extends React.Component<
           : this.state.joinRegulatoryTopicItems
         : this.state.internalPolicies
     );
+    const policyUser = this.connectAndReadPolicyUser();
+    policyUser.then(policiesUser => {
+      const clonedListWithFavorite = this.leftOuterJoinPolicyUser(
+        cloned,
+        policiesUser
+      );
+      const clonedList = this.setStateAvgRate(
+        policiesUser,
+        clonedListWithFavorite
+      );
+      let filteredList = [];
+      stringRegulatoryTopic.forEach(s => {
+        clonedList
+          .filter(f => f.RegulatoryTopic.includes(s))
+          .map(item => filteredList.push(item));
+      });
+      let uniqueItems = new Set(filteredList.map(unique => unique));
+      let documentFiles = [];
+      uniqueItems.forEach(u => {
+        documentFiles.push(u);
+      });
+      this.setState({
+        documentFiles:
+          stringRegulatoryTopic.length > 0 ? documentFiles : clonedList,
+        joinPolicyCategoryItems:
+          stringRegulatoryTopic.length > 0 ? documentFiles : clonedList,
+        joinYearItems:
+          stringRegulatoryTopic.length > 0 ? documentFiles : clonedList,
+        joinMonthItems:
+          stringRegulatoryTopic.length > 0 ? documentFiles : clonedList,
+        anyRegulatoryTopicSelected:
+          stringRegulatoryTopic.length > 0 ? true : false,
+        status: `Successfully loaded ${
+          stringRegulatoryTopic.length > 0
+            ? documentFiles.length
+            : clonedList.length
+        } items`,
+        statusIndicator: 1
+      });
 
-    let filteredList = [];
-    stringRegulatoryTopic.forEach(s => {
-      clonedList
-        .filter(f => f.RegulatoryTopic.includes(s))
-        .map(item => filteredList.push(item));
+      if (!this.state.anyPolicyCategorySelected) {
+        this.dropDownPolicyCategory(
+          stringRegulatoryTopic.length > 0 ? documentFiles : clonedList
+        );
+      }
+      if (!this.state.anyYearSelected) {
+        this.dropDownDateYear(
+          stringRegulatoryTopic.length > 0 ? documentFiles : clonedList
+        );
+      }
+      if (!this.state.anyMonthSelected) {
+        this.dropDownDateMonth(
+          stringRegulatoryTopic.length > 0 ? documentFiles : clonedList
+        );
+      }
     });
-    let uniqueItems = new Set(filteredList.map(unique => unique));
-    let documentFiles = [];
-    uniqueItems.forEach(u => {
-      documentFiles.push(u);
-    });
-    this.setState({
-      documentFiles:
-        stringRegulatoryTopic.length > 0 ? documentFiles : clonedList,
-      joinPolicyCategoryItems:
-        stringRegulatoryTopic.length > 0 ? documentFiles : clonedList,
-      joinYearItems:
-        stringRegulatoryTopic.length > 0 ? documentFiles : clonedList,
-      joinMonthItems:
-        stringRegulatoryTopic.length > 0 ? documentFiles : clonedList,
-      anyRegulatoryTopicSelected:
-        stringRegulatoryTopic.length > 0 ? true : false,
-      status: `Successfully loaded ${
-        stringRegulatoryTopic.length > 0
-          ? documentFiles.length
-          : clonedList.length
-      } items`
-    });
-
-    if (!this.state.anyPolicyCategorySelected) {
-      this.dropDownPolicyCategory(
-        stringRegulatoryTopic.length > 0 ? documentFiles : clonedList
-      );
-    }
-    if (!this.state.anyYearSelected) {
-      this.dropDownDateYear(
-        stringRegulatoryTopic.length > 0 ? documentFiles : clonedList
-      );
-    }
-    if (!this.state.anyMonthSelected) {
-      this.dropDownDateMonth(
-        stringRegulatoryTopic.length > 0 ? documentFiles : clonedList
-      );
-    }
   }
   private filterByYear(selectedItems) {
     const stringYear = this.selectItems(selectedItems, this.state.stringYear);
     this.setState({
       stringYear,
+      statusIndicator: 0,
       status: "Loading all items..."
     });
-    const clonedList = this.clonedList(
+    const cloned = this.clonedList(
       this.state.anyPolicyCategorySelected ||
         this.state.anyRegulatoryTopicSelected ||
         this.state.anyMonthSelected
@@ -517,54 +734,66 @@ export default class DocumentCrud extends React.Component<
           : this.state.joinYearItems
         : this.state.internalPolicies
     );
+    const policyUser = this.connectAndReadPolicyUser();
+    policyUser.then(policiesUser => {
+      const clonedListWithFavorite = this.leftOuterJoinPolicyUser(
+        cloned,
+        policiesUser
+      );
+      const clonedList = this.setStateAvgRate(
+        policiesUser,
+        clonedListWithFavorite
+      );
+      let filteredList = [];
+      stringYear.forEach(s => {
+        clonedList
+          .filter(f => f.Year.includes(s))
+          .map(item => filteredList.push(item));
+      });
+      let uniqueItems = new Set(filteredList.map(unique => unique));
+      let documentFiles = [];
+      uniqueItems.forEach(u => {
+        documentFiles.push(u);
+      });
+      this.setState({
+        documentFiles: stringYear.length > 0 ? documentFiles : clonedList,
+        joinPolicyCategoryItems:
+          stringYear.length > 0 ? documentFiles : clonedList,
+        joinRegulatoryTopicItems:
+          stringYear.length > 0 ? documentFiles : clonedList,
+        joinMonthItems: stringYear.length > 0 ? documentFiles : clonedList,
+        anyYearSelected: stringYear.length > 0 ? true : false,
+        status: `Successfully loaded ${
+          stringYear.length > 0 ? documentFiles.length : clonedList.length
+        } items`,
+        statusIndicator: 1
+      });
 
-    let filteredList = [];
-    stringYear.forEach(s => {
-      clonedList
-        .filter(f => f.Year.includes(s))
-        .map(item => filteredList.push(item));
+      if (!this.state.anyPolicyCategorySelected) {
+        this.dropDownPolicyCategory(
+          stringYear.length > 0 ? documentFiles : clonedList
+        );
+      }
+      if (!this.state.anyRegulatoryTopicSelected) {
+        this.dropDownRegulatoryTopic(
+          stringYear.length > 0 ? documentFiles : clonedList
+        );
+      }
+      if (!this.state.anyMonthSelected) {
+        this.dropDownDateMonth(
+          stringYear.length > 0 ? documentFiles : clonedList
+        );
+      }
     });
-    let uniqueItems = new Set(filteredList.map(unique => unique));
-    let documentFiles = [];
-    uniqueItems.forEach(u => {
-      documentFiles.push(u);
-    });
-    this.setState({
-      documentFiles: stringYear.length > 0 ? documentFiles : clonedList,
-      joinPolicyCategoryItems:
-        stringYear.length > 0 ? documentFiles : clonedList,
-      joinRegulatoryTopicItems:
-        stringYear.length > 0 ? documentFiles : clonedList,
-      joinMonthItems: stringYear.length > 0 ? documentFiles : clonedList,
-      anyYearSelected: stringYear.length > 0 ? true : false,
-      status: `Successfully loaded ${
-        stringYear.length > 0 ? documentFiles.length : clonedList.length
-      } items`
-    });
-
-    if (!this.state.anyPolicyCategorySelected) {
-      this.dropDownPolicyCategory(
-        stringYear.length > 0 ? documentFiles : clonedList
-      );
-    }
-    if (!this.state.anyRegulatoryTopicSelected) {
-      this.dropDownRegulatoryTopic(
-        stringYear.length > 0 ? documentFiles : clonedList
-      );
-    }
-    if (!this.state.anyMonthSelected) {
-      this.dropDownDateMonth(
-        stringYear.length > 0 ? documentFiles : clonedList
-      );
-    }
   }
   private filterByMonth(selectedItems) {
     const stringMonth = this.selectItems(selectedItems, this.state.stringMonth);
     this.setState({
       stringMonth,
+      statusIndicator: 0,
       status: "Loading all items..."
     });
-    const clonedList = this.clonedList(
+    const cloned = this.clonedList(
       this.state.anyPolicyCategorySelected ||
         this.state.anyRegulatoryTopicSelected ||
         this.state.anyYearSelected
@@ -573,45 +802,57 @@ export default class DocumentCrud extends React.Component<
           : this.state.joinMonthItems
         : this.state.internalPolicies
     );
-    let filteredList = [];
-    stringMonth.forEach(s => {
-      clonedList
-        .filter(f => f.Month.includes(s))
-        .map(item => filteredList.push(item));
-    });
-    let uniqueItems = new Set(filteredList.map(unique => unique));
-    let documentFiles = [];
-    uniqueItems.forEach(u => {
-      documentFiles.push(u);
-    });
-    this.setState({
-      documentFiles: stringMonth.length > 0 ? documentFiles : clonedList,
-      joinPolicyCategoryItems:
-        stringMonth.length > 0 ? documentFiles : clonedList,
-      joinRegulatoryTopicItems:
-        stringMonth.length > 0 ? documentFiles : clonedList,
-      joinYearItems: stringMonth.length > 0 ? documentFiles : clonedList,
-      anyMonthSelected: stringMonth.length > 0 ? true : false,
-      status: `Successfully loaded ${
-        stringMonth.length > 0 ? documentFiles.length : clonedList.length
-      } items`
-    });
+    const policyUser = this.connectAndReadPolicyUser();
+    policyUser.then(policiesUser => {
+      const clonedListWithFavorite = this.leftOuterJoinPolicyUser(
+        cloned,
+        policiesUser
+      );
+      const clonedList = this.setStateAvgRate(
+        policiesUser,
+        clonedListWithFavorite
+      );
+      let filteredList = [];
+      stringMonth.forEach(s => {
+        clonedList
+          .filter(f => f.Month.includes(s))
+          .map(item => filteredList.push(item));
+      });
+      let uniqueItems = new Set(filteredList.map(unique => unique));
+      let documentFiles = [];
+      uniqueItems.forEach(u => {
+        documentFiles.push(u);
+      });
+      this.setState({
+        documentFiles: stringMonth.length > 0 ? documentFiles : clonedList,
+        joinPolicyCategoryItems:
+          stringMonth.length > 0 ? documentFiles : clonedList,
+        joinRegulatoryTopicItems:
+          stringMonth.length > 0 ? documentFiles : clonedList,
+        joinYearItems: stringMonth.length > 0 ? documentFiles : clonedList,
+        anyMonthSelected: stringMonth.length > 0 ? true : false,
+        status: `Successfully loaded ${
+          stringMonth.length > 0 ? documentFiles.length : clonedList.length
+        } items`,
+        statusIndicator: 1
+      });
 
-    if (!this.state.anyPolicyCategorySelected) {
-      this.dropDownPolicyCategory(
-        stringMonth.length > 0 ? documentFiles : clonedList
-      );
-    }
-    if (!this.state.anyRegulatoryTopicSelected) {
-      this.dropDownRegulatoryTopic(
-        stringMonth.length > 0 ? documentFiles : clonedList
-      );
-    }
-    if (!this.state.anyYearSelected) {
-      this.dropDownDateYear(
-        stringMonth.length > 0 ? documentFiles : clonedList
-      );
-    }
+      if (!this.state.anyPolicyCategorySelected) {
+        this.dropDownPolicyCategory(
+          stringMonth.length > 0 ? documentFiles : clonedList
+        );
+      }
+      if (!this.state.anyRegulatoryTopicSelected) {
+        this.dropDownRegulatoryTopic(
+          stringMonth.length > 0 ? documentFiles : clonedList
+        );
+      }
+      if (!this.state.anyYearSelected) {
+        this.dropDownDateYear(
+          stringMonth.length > 0 ? documentFiles : clonedList
+        );
+      }
+    });
   }
   private selectItems(selectedItems, stringList) {
     let result = [...stringList];
@@ -685,22 +926,8 @@ export default class DocumentCrud extends React.Component<
       return result.data.Id;
     });
   }
-  private policyUserObj(response) {
-    // console.log(response);
-    var policyUserList = [];
-    response.forEach(element => {
-      policyUserList.push({
-        PolicyNumber: element.PolicyNumber,
-        Title: element.Title,
-        Favorite: element.Favorite,
-        Rate: element.Rate,
-        Comment: element.Comment
-      });
-    });
-    return policyUserList;
-  }
   private leftOuterJoinPolicyUser(a, b) {
-    console.log(b);
+    // console.log(b);
     let result = [];
     a.forEach(policy => {
       let found = false;
@@ -743,6 +970,99 @@ export default class DocumentCrud extends React.Component<
     });
     return result;
   }
+  private setStateAvgRate(avgResponse, result) {
+    console.log(result);
+    let avgList = [];
+    avgResponse.forEach(element => {
+      avgList.push({
+        PolicyNumber: element.PolicyNumber,
+        Rate: element.Rate
+      });
+    });
+
+    let groupeData = avgList.reduce((l, r) => {
+      let key = r.PolicyNumber;
+      if (typeof l[key] === "undefined") {
+        l[key] = {
+          sum: 0,
+          count: 0
+        };
+      }
+      l[key].sum += r.Rate;
+      l[key].count += 1;
+      return l;
+    }, {});
+    let avgGroupedData = Object.keys(groupeData).map(key => {
+      let keyParts = key.split(/\|/);
+      return {
+        PolicyNumber: parseInt(keyParts[0], 10),
+        Rate: groupeData[key].sum / groupeData[key].count
+      };
+    });
+    let results = [];
+    for (let x = 0; x < result.length; x++) {
+      const diffDays = this.getDiffDays(result[x].Date_x0020_of_x0020_approval);
+      let foundX = false;
+      if (result[x].Rate) {
+        for (let y = 0; y < avgGroupedData.length; y++) {
+          if (result[x].Id === avgGroupedData[y].PolicyNumber) {
+            results.push({
+              Id: result[x].Id,
+              PolicyNumber: result[x].PolicyNumber,
+              Name: result[x].Name,
+              Version: result[x].Version,
+              DocumentLink: result[x].DocumentLink,
+              ApprovedDate: result[x].ApprovedDate,
+              PolicyCategory: result[x].PolicyCategory,
+              RegulatoryTopic: result[x].RegulatoryTopic,
+              Year: result[x].Year,
+              Month: result[x].Month,
+              Favorite: result[x].Favorite,
+              Rate: avgGroupedData[y].Rate,
+              Comment: result[x].Comment
+            });
+            foundX = true;
+            break;
+          }
+        }
+        if (foundX === false) {
+          results.push({
+            Id: result[x].Id,
+            PolicyNumber: result[x].PolicyNumber,
+            Name: result[x].Name,
+            Version: result[x].Version,
+            DocumentLink: result[x].DocumentLink,
+            ApprovedDate: result[x].ApprovedDate,
+            PolicyCategory: result[x].PolicyCategory,
+            RegulatoryTopic: result[x].RegulatoryTopic,
+            Year: result[x].Year,
+            Month: result[x].Month,
+            Favorite: result[x].Favorite,
+            Rate: 0,
+            Comment: result[x].Comment
+          });
+        }
+      } else {
+        results.push({
+          Id: result[x].Id,
+          PolicyNumber: result[x].PolicyNumber,
+          Name: result[x].Name,
+          Version: result[x].Version,
+          DocumentLink: result[x].DocumentLink,
+          ApprovedDate: result[x].ApprovedDate,
+          PolicyCategory: result[x].PolicyCategory,
+          RegulatoryTopic: result[x].RegulatoryTopic,
+          Year: result[x].Year,
+          Month: result[x].Month,
+          Favorite: result[x].Favorite,
+          Rate: 0,
+          Comment: result[x].Comment
+        });
+      }
+    }
+    return results;
+  }
+
   private listNotConfigured(props: ISearchMaskProps): boolean {
     return (
       props.listName === undefined ||
