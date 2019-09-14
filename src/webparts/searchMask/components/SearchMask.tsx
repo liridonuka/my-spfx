@@ -8,6 +8,16 @@ import { Dropdown } from "office-ui-fabric-react/lib/Dropdown";
 import { Icon } from "office-ui-fabric-react/lib/Icon";
 import { Rating, RatingSize } from "office-ui-fabric-react/lib/Rating";
 import { Spinner, SpinnerSize } from "office-ui-fabric-react/lib/Spinner";
+import { TextField } from "office-ui-fabric-react/lib/TextField";
+import {
+  PrimaryButton,
+  DefaultButton
+} from "office-ui-fabric-react/lib/Button";
+import {
+  Dialog,
+  DialogType,
+  DialogFooter
+} from "office-ui-fabric-react/lib/Dialog";
 import { IListItem, IPolicyUser } from "./IListItem";
 import { arraysEqual } from "@uifabric/utilities/lib";
 export default class DocumentCrud extends React.Component<
@@ -48,7 +58,11 @@ export default class DocumentCrud extends React.Component<
       anyPolicyCategorySelected: false,
       anyRegulatoryTopicSelected: false,
       anyYearSelected: false,
-      anyMonthSelected: false
+      anyMonthSelected: false,
+      hideDialog: true,
+      commentState: "",
+      policyNumberState: 0,
+      show: 0
     };
   }
   public render(): React.ReactElement<ISearchMaskProps> {
@@ -124,18 +138,34 @@ export default class DocumentCrud extends React.Component<
                 <div className={styles.policyInline}>
                   <Icon
                     onClick={
-                      document.Favorite !== 1
+                      document.Favorite === 1 && document.Rate === 0
                         ? () =>
+                            this.removeFromFavorites(
+                              document.Name,
+                              document.Id,
+                              this.state.documentFiles
+                            )
+                        : document.Favorite === 1 && document.Rate > 0
+                        ? () =>
+                            this.updateFavorites(
+                              document.Name,
+                              document.Id,
+                              this.state.documentFiles,
+                              0
+                            )
+                        : document.Favorite === 0 && document.Rate > 0
+                        ? () =>
+                            this.updateFavorites(
+                              document.Name,
+                              document.Id,
+                              this.state.documentFiles,
+                              1
+                            )
+                        : () =>
                             this.addToFavorite(
                               document.Name,
                               document.Id,
                               document.DocumentLink,
-                              this.state.documentFiles
-                            )
-                        : () =>
-                            this.removeFromFavorites(
-                              document.Name,
-                              document.Id,
                               this.state.documentFiles
                             )
                     }
@@ -195,15 +225,66 @@ export default class DocumentCrud extends React.Component<
                       max={5}
                       rating={document.Rate}
                       onChanged={
-                        document.Rate || document.Favorite
-                          ? this.updateRate.bind(
+                        !document.Rate && !document.Favorite
+                          ? this.addRating.bind(
                               this,
+                              document.Name,
                               document.Id,
+                              document.DocumentLink,
                               this.state.documentFiles
                             )
-                          : undefined
+                          : this.updateRate.bind(
+                              this,
+                              document.Name,
+                              document.Id,
+                              document.DocumentLink,
+                              this.state.documentFiles
+                            )
                       }
                     />
+                  </div>
+                  <div>
+                    {/* <DefaultButton
+                      secondaryText="Opens the Sample Dialog"
+                      onClick={() => this._showDialog()}
+                      text="Open Dialog"
+                    /> */}
+                    <Dialog
+                      hidden={this.state.hideDialog}
+                      onDismiss={() => this._closeDialog()}
+                      dialogContentProps={{
+                        type: DialogType.largeHeader,
+                        title: "Policy comment",
+                        subText:
+                          "Your Inbox has changed. No longer does it include favorites, it is a singular destination for your emails."
+                      }}
+                      modalProps={{
+                        isBlocking: false
+                      }}
+                    >
+                      <TextField
+                        label="Standard"
+                        multiline
+                        rows={8}
+                        onChanged={this.commentState.bind(this)}
+                      />
+                      <DialogFooter>
+                        <DefaultButton
+                          onClick={() =>
+                            this.updateComent(
+                              this.state.policyNumberState,
+                              this.state.documentFiles,
+                              this.state.commentState
+                            )
+                          }
+                          text="Comment"
+                        />
+                        <PrimaryButton
+                          onClick={() => this._closeDialog()}
+                          text="Close"
+                        />
+                      </DialogFooter>
+                    </Dialog>
                   </div>
                 </div>
               </div>
@@ -213,13 +294,54 @@ export default class DocumentCrud extends React.Component<
       </div>
     );
   }
+  private commentState(commentState): void {
+    this.setState({ commentState });
+  }
   public componentWillMount() {
     this.connectAndReadPolicies();
     this.connectAndReadPolicyUser();
     // this.getCurretUser();
   }
-  private updateRate(policyNumber, policies, rate): void {
-    console.log(rate, policyNumber);
+  private updateComent(policyNumber, policies, comment): void {
+    this.setState({ statusIndicator: 0 });
+    const selectedPolicy = this.connectAndReadPolicyUserById(policyNumber);
+    selectedPolicy.then(selected => {
+      let web = new Web(this.props.context.pageContext.web.absoluteUrl);
+      web.lists
+        .getByTitle("PolicyUser")
+        .items.getById(selected)
+        .update({
+          Comment: comment
+        })
+        .then(
+          (result: ItemAddResult): void => {
+            // const item: IPolicyUser = result.data as IPolicyUser;
+            const policyUser = this.connectAndReadPolicyUser();
+            policyUser.then(policiesUser => {
+              const documents = this.leftOuterJoinPolicyUser(
+                policies,
+                policiesUser
+              );
+              const rateAverage = this.connectAndReadRateAverage();
+              rateAverage.then(avg => {
+                const documentFiles = this.setStateAvgRate(avg, documents);
+                this.setState({
+                  documentFiles,
+                  hideDialog: true,
+                  statusIndicator: 1
+                });
+              });
+            });
+          },
+          (error: any): void => {
+            this.setState({
+              status: "Error while adding to favorites: " + error
+            });
+          }
+        );
+    });
+  }
+  private updateRate(title, policyNumber, docLink, policies, rate): void {
     this.setState({ statusIndicator: 0 });
     const selectedPolicy = this.connectAndReadPolicyUserById(policyNumber);
     selectedPolicy.then(selected => {
@@ -239,13 +361,13 @@ export default class DocumentCrud extends React.Component<
                 policies,
                 policiesUser
               );
-              const documentFiles = this.setStateAvgRate(
-                policiesUser,
-                documents
-              );
-              this.setState({
-                documentFiles,
-                statusIndicator: 1
+              const rateAverage = this.connectAndReadRateAverage();
+              rateAverage.then(avg => {
+                const documentFiles = this.setStateAvgRate(avg, documents);
+                this.setState({
+                  documentFiles,
+                  statusIndicator: 1
+                });
               });
             });
           },
@@ -256,6 +378,49 @@ export default class DocumentCrud extends React.Component<
           }
         );
     });
+    if (this.state.show === 0) {
+      this._showDialog(policyNumber);
+    }
+  }
+  private addRating(title, policyNumber, docLink, policies, rate): void {
+    this.setState({ statusIndicator: 0 });
+    let web = new Web(this.props.context.pageContext.web.absoluteUrl);
+    web.lists
+      .getByTitle("PolicyUser")
+      .items.add({
+        Title: title,
+        PolicyNumber: policyNumber,
+        Rate: rate,
+        Policy: title,
+        PolicyLink: docLink
+      })
+      .then(
+        (result: ItemAddResult): void => {
+          // const item: IPolicyUser = result.data as IPolicyUser;
+          const policyUser = this.connectAndReadPolicyUser();
+          policyUser.then(policiesUser => {
+            const documents = this.leftOuterJoinPolicyUser(
+              policies,
+              policiesUser
+            );
+            const rateAverage = this.connectAndReadRateAverage();
+            rateAverage.then(avg => {
+              const documentFiles = this.setStateAvgRate(avg, documents);
+              this.setState({
+                documentFiles,
+                status: `${title} was added to favorites`,
+                statusIndicator: 1
+              });
+            });
+          });
+        },
+        (error: any): void => {
+          this.setState({
+            status: "Error while adding to favorites: " + error
+          });
+        }
+      );
+    this._showDialog(policyNumber);
   }
   private addToFavorite(title, policyNumber, docLink, policies): void {
     this.setState({ status: "Adding to favorites...", statusIndicator: 0 });
@@ -278,11 +443,14 @@ export default class DocumentCrud extends React.Component<
               policies,
               policiesUser
             );
-            const documentFiles = this.setStateAvgRate(policiesUser, documents);
-            this.setState({
-              documentFiles,
-              status: `${title} was added to favorites`,
-              statusIndicator: 1
+            const rateAverage = this.connectAndReadRateAverage();
+            rateAverage.then(avg => {
+              const documentFiles = this.setStateAvgRate(avg, documents);
+              this.setState({
+                documentFiles,
+                status: `${title} was added to favorites`,
+                statusIndicator: 1
+              });
             });
           });
         },
@@ -293,7 +461,7 @@ export default class DocumentCrud extends React.Component<
         }
       );
   }
-  private updateFavorites(title, policyNumber, policies): void {
+  private updateFavorites(title, policyNumber, policies, favorite): void {
     this.setState({ status: "Updating favorites...", statusIndicator: 0 });
     const selectedPolicy = this.connectAndReadPolicyUserById(policyNumber);
     selectedPolicy.then(selected => {
@@ -302,7 +470,7 @@ export default class DocumentCrud extends React.Component<
         .getByTitle("PolicyUser")
         .items.getById(selected)
         .update({
-          Favorite: 0
+          Favorite: favorite
         })
         .then(
           (result: ItemAddResult): void => {
@@ -313,14 +481,14 @@ export default class DocumentCrud extends React.Component<
                 policies,
                 policiesUser
               );
-              const documentFiles = this.setStateAvgRate(
-                policiesUser,
-                documents
-              );
-              this.setState({
-                documentFiles,
-                status: `${title} Updated`,
-                statusIndicator: 1
+              const rateAverage = this.connectAndReadRateAverage();
+              rateAverage.then(avg => {
+                const documentFiles = this.setStateAvgRate(avg, documents);
+                this.setState({
+                  documentFiles,
+                  status: `${title} Updated`,
+                  statusIndicator: 1
+                });
               });
             });
           },
@@ -350,14 +518,14 @@ export default class DocumentCrud extends React.Component<
                 policies,
                 policiesUser
               );
-              const documentFiles = this.setStateAvgRate(
-                policiesUser,
-                documents
-              );
-              this.setState({
-                documentFiles,
-                status: `${title} was removed from favorites`,
-                statusIndicator: 1
+              const rateAverage = this.connectAndReadRateAverage();
+              rateAverage.then(avg => {
+                const documentFiles = this.setStateAvgRate(avg, documents);
+                this.setState({
+                  documentFiles,
+                  status: `${title} was removed from favorites`,
+                  statusIndicator: 1
+                });
               });
             });
           },
@@ -400,6 +568,23 @@ export default class DocumentCrud extends React.Component<
         }
       );
     });
+  }
+  private connectAndReadRateAverage() {
+    const web = new Web(this.props.context.pageContext.web.absoluteUrl);
+    return web.lists
+      .getByTitle("PolicyUser")
+      .items.select("PolicyNumber", "Rate")
+      .get()
+      .then(
+        policyUser => {
+          return policyUser;
+        },
+        (error: any): void => {
+          this.setState({
+            status: "Loading all items failed with error: " + error
+          });
+        }
+      );
   }
   private connectAndReadPolicyUser() {
     const ama = this.getCurretUser();
@@ -501,18 +686,21 @@ export default class DocumentCrud extends React.Component<
     const policyUser = this.connectAndReadPolicyUser();
     policyUser.then(policiesUser => {
       const documents = this.leftOuterJoinPolicyUser(policies, policiesUser);
-      const documentFiles = this.setStateAvgRate(policiesUser, documents);
-      this.setState({
-        documentFiles,
-        internalPolicies: documentFiles,
-        joinPolicyCategoryItems,
-        joinRegulatoryTopicItems,
-        status: `Successfully loaded ${documentFiles.length} items`
+      const rateAverage = this.connectAndReadRateAverage();
+      rateAverage.then(avg => {
+        const documentFiles = this.setStateAvgRate(avg, documents);
+        this.setState({
+          documentFiles,
+          internalPolicies: documentFiles,
+          joinPolicyCategoryItems,
+          joinRegulatoryTopicItems,
+          status: `Successfully loaded ${documentFiles.length} items`
+        });
+        this.dropDownPolicyCategory(documentFiles);
+        this.dropDownRegulatoryTopic(documentFiles);
+        this.dropDownDateYear(documentFiles);
+        this.dropDownDateMonth(documentFiles);
       });
-      this.dropDownPolicyCategory(documentFiles);
-      this.dropDownRegulatoryTopic(documentFiles);
-      this.dropDownDateYear(documentFiles);
-      this.dropDownDateMonth(documentFiles);
     });
   }
   //dropdowns
@@ -591,55 +779,54 @@ export default class DocumentCrud extends React.Component<
         cloned,
         policiesUser
       );
-      const clonedList = this.setStateAvgRate(
-        policiesUser,
-        clonedListWithFavorite
-      );
-      let filteredList = [];
-      stringPolicyCategory.forEach(s => {
-        clonedList
-          .filter(f => f.PolicyCategory.includes(s))
-          .map(item => filteredList.push(item));
+      const rateAverage = this.connectAndReadRateAverage();
+      rateAverage.then(avg => {
+        const clonedList = this.setStateAvgRate(avg, clonedListWithFavorite);
+        let filteredList = [];
+        stringPolicyCategory.forEach(s => {
+          clonedList
+            .filter(f => f.PolicyCategory.includes(s))
+            .map(item => filteredList.push(item));
+        });
+        let uniqueItems = new Set(filteredList.map(unique => unique));
+        let documentFiles = [];
+        uniqueItems.forEach(u => {
+          documentFiles.push(u);
+        });
+        this.setState({
+          documentFiles:
+            stringPolicyCategory.length > 0 ? documentFiles : clonedList,
+          joinRegulatoryTopicItems:
+            stringPolicyCategory.length > 0 ? documentFiles : clonedList,
+          joinYearItems:
+            stringPolicyCategory.length > 0 ? documentFiles : clonedList,
+          joinMonthItems:
+            stringPolicyCategory.length > 0 ? documentFiles : clonedList,
+          anyPolicyCategorySelected:
+            stringPolicyCategory.length > 0 ? true : false,
+          status: `Successfully loaded ${
+            stringPolicyCategory.length > 0
+              ? documentFiles.length
+              : clonedList.length
+          } items`,
+          statusIndicator: 1
+        });
+        if (!this.state.anyRegulatoryTopicSelected) {
+          this.dropDownRegulatoryTopic(
+            stringPolicyCategory.length > 0 ? documentFiles : clonedList
+          );
+        }
+        if (!this.state.anyYearSelected) {
+          this.dropDownDateYear(
+            stringPolicyCategory.length > 0 ? documentFiles : clonedList
+          );
+        }
+        if (!this.state.anyMonthSelected) {
+          this.dropDownDateMonth(
+            stringPolicyCategory.length > 0 ? documentFiles : clonedList
+          );
+        }
       });
-      let uniqueItems = new Set(filteredList.map(unique => unique));
-      let documentFiles = [];
-      uniqueItems.forEach(u => {
-        documentFiles.push(u);
-      });
-
-      this.setState({
-        documentFiles:
-          stringPolicyCategory.length > 0 ? documentFiles : clonedList,
-        joinRegulatoryTopicItems:
-          stringPolicyCategory.length > 0 ? documentFiles : clonedList,
-        joinYearItems:
-          stringPolicyCategory.length > 0 ? documentFiles : clonedList,
-        joinMonthItems:
-          stringPolicyCategory.length > 0 ? documentFiles : clonedList,
-        anyPolicyCategorySelected:
-          stringPolicyCategory.length > 0 ? true : false,
-        status: `Successfully loaded ${
-          stringPolicyCategory.length > 0
-            ? documentFiles.length
-            : clonedList.length
-        } items`,
-        statusIndicator: 1
-      });
-      if (!this.state.anyRegulatoryTopicSelected) {
-        this.dropDownRegulatoryTopic(
-          stringPolicyCategory.length > 0 ? documentFiles : clonedList
-        );
-      }
-      if (!this.state.anyYearSelected) {
-        this.dropDownDateYear(
-          stringPolicyCategory.length > 0 ? documentFiles : clonedList
-        );
-      }
-      if (!this.state.anyMonthSelected) {
-        this.dropDownDateMonth(
-          stringPolicyCategory.length > 0 ? documentFiles : clonedList
-        );
-      }
     });
   }
   private filterByRegulatoryTopic(selectedItems) {
@@ -667,55 +854,55 @@ export default class DocumentCrud extends React.Component<
         cloned,
         policiesUser
       );
-      const clonedList = this.setStateAvgRate(
-        policiesUser,
-        clonedListWithFavorite
-      );
-      let filteredList = [];
-      stringRegulatoryTopic.forEach(s => {
-        clonedList
-          .filter(f => f.RegulatoryTopic.includes(s))
-          .map(item => filteredList.push(item));
-      });
-      let uniqueItems = new Set(filteredList.map(unique => unique));
-      let documentFiles = [];
-      uniqueItems.forEach(u => {
-        documentFiles.push(u);
-      });
-      this.setState({
-        documentFiles:
-          stringRegulatoryTopic.length > 0 ? documentFiles : clonedList,
-        joinPolicyCategoryItems:
-          stringRegulatoryTopic.length > 0 ? documentFiles : clonedList,
-        joinYearItems:
-          stringRegulatoryTopic.length > 0 ? documentFiles : clonedList,
-        joinMonthItems:
-          stringRegulatoryTopic.length > 0 ? documentFiles : clonedList,
-        anyRegulatoryTopicSelected:
-          stringRegulatoryTopic.length > 0 ? true : false,
-        status: `Successfully loaded ${
-          stringRegulatoryTopic.length > 0
-            ? documentFiles.length
-            : clonedList.length
-        } items`,
-        statusIndicator: 1
-      });
+      const rateAverage = this.connectAndReadRateAverage();
+      rateAverage.then(avg => {
+        const clonedList = this.setStateAvgRate(avg, clonedListWithFavorite);
+        let filteredList = [];
+        stringRegulatoryTopic.forEach(s => {
+          clonedList
+            .filter(f => f.RegulatoryTopic.includes(s))
+            .map(item => filteredList.push(item));
+        });
+        let uniqueItems = new Set(filteredList.map(unique => unique));
+        let documentFiles = [];
+        uniqueItems.forEach(u => {
+          documentFiles.push(u);
+        });
+        this.setState({
+          documentFiles:
+            stringRegulatoryTopic.length > 0 ? documentFiles : clonedList,
+          joinPolicyCategoryItems:
+            stringRegulatoryTopic.length > 0 ? documentFiles : clonedList,
+          joinYearItems:
+            stringRegulatoryTopic.length > 0 ? documentFiles : clonedList,
+          joinMonthItems:
+            stringRegulatoryTopic.length > 0 ? documentFiles : clonedList,
+          anyRegulatoryTopicSelected:
+            stringRegulatoryTopic.length > 0 ? true : false,
+          status: `Successfully loaded ${
+            stringRegulatoryTopic.length > 0
+              ? documentFiles.length
+              : clonedList.length
+          } items`,
+          statusIndicator: 1
+        });
 
-      if (!this.state.anyPolicyCategorySelected) {
-        this.dropDownPolicyCategory(
-          stringRegulatoryTopic.length > 0 ? documentFiles : clonedList
-        );
-      }
-      if (!this.state.anyYearSelected) {
-        this.dropDownDateYear(
-          stringRegulatoryTopic.length > 0 ? documentFiles : clonedList
-        );
-      }
-      if (!this.state.anyMonthSelected) {
-        this.dropDownDateMonth(
-          stringRegulatoryTopic.length > 0 ? documentFiles : clonedList
-        );
-      }
+        if (!this.state.anyPolicyCategorySelected) {
+          this.dropDownPolicyCategory(
+            stringRegulatoryTopic.length > 0 ? documentFiles : clonedList
+          );
+        }
+        if (!this.state.anyYearSelected) {
+          this.dropDownDateYear(
+            stringRegulatoryTopic.length > 0 ? documentFiles : clonedList
+          );
+        }
+        if (!this.state.anyMonthSelected) {
+          this.dropDownDateMonth(
+            stringRegulatoryTopic.length > 0 ? documentFiles : clonedList
+          );
+        }
+      });
     });
   }
   private filterByYear(selectedItems) {
@@ -740,50 +927,50 @@ export default class DocumentCrud extends React.Component<
         cloned,
         policiesUser
       );
-      const clonedList = this.setStateAvgRate(
-        policiesUser,
-        clonedListWithFavorite
-      );
-      let filteredList = [];
-      stringYear.forEach(s => {
-        clonedList
-          .filter(f => f.Year.includes(s))
-          .map(item => filteredList.push(item));
-      });
-      let uniqueItems = new Set(filteredList.map(unique => unique));
-      let documentFiles = [];
-      uniqueItems.forEach(u => {
-        documentFiles.push(u);
-      });
-      this.setState({
-        documentFiles: stringYear.length > 0 ? documentFiles : clonedList,
-        joinPolicyCategoryItems:
-          stringYear.length > 0 ? documentFiles : clonedList,
-        joinRegulatoryTopicItems:
-          stringYear.length > 0 ? documentFiles : clonedList,
-        joinMonthItems: stringYear.length > 0 ? documentFiles : clonedList,
-        anyYearSelected: stringYear.length > 0 ? true : false,
-        status: `Successfully loaded ${
-          stringYear.length > 0 ? documentFiles.length : clonedList.length
-        } items`,
-        statusIndicator: 1
-      });
+      const rateAverage = this.connectAndReadRateAverage();
+      rateAverage.then(avg => {
+        const clonedList = this.setStateAvgRate(avg, clonedListWithFavorite);
+        let filteredList = [];
+        stringYear.forEach(s => {
+          clonedList
+            .filter(f => f.Year.includes(s))
+            .map(item => filteredList.push(item));
+        });
+        let uniqueItems = new Set(filteredList.map(unique => unique));
+        let documentFiles = [];
+        uniqueItems.forEach(u => {
+          documentFiles.push(u);
+        });
+        this.setState({
+          documentFiles: stringYear.length > 0 ? documentFiles : clonedList,
+          joinPolicyCategoryItems:
+            stringYear.length > 0 ? documentFiles : clonedList,
+          joinRegulatoryTopicItems:
+            stringYear.length > 0 ? documentFiles : clonedList,
+          joinMonthItems: stringYear.length > 0 ? documentFiles : clonedList,
+          anyYearSelected: stringYear.length > 0 ? true : false,
+          status: `Successfully loaded ${
+            stringYear.length > 0 ? documentFiles.length : clonedList.length
+          } items`,
+          statusIndicator: 1
+        });
 
-      if (!this.state.anyPolicyCategorySelected) {
-        this.dropDownPolicyCategory(
-          stringYear.length > 0 ? documentFiles : clonedList
-        );
-      }
-      if (!this.state.anyRegulatoryTopicSelected) {
-        this.dropDownRegulatoryTopic(
-          stringYear.length > 0 ? documentFiles : clonedList
-        );
-      }
-      if (!this.state.anyMonthSelected) {
-        this.dropDownDateMonth(
-          stringYear.length > 0 ? documentFiles : clonedList
-        );
-      }
+        if (!this.state.anyPolicyCategorySelected) {
+          this.dropDownPolicyCategory(
+            stringYear.length > 0 ? documentFiles : clonedList
+          );
+        }
+        if (!this.state.anyRegulatoryTopicSelected) {
+          this.dropDownRegulatoryTopic(
+            stringYear.length > 0 ? documentFiles : clonedList
+          );
+        }
+        if (!this.state.anyMonthSelected) {
+          this.dropDownDateMonth(
+            stringYear.length > 0 ? documentFiles : clonedList
+          );
+        }
+      });
     });
   }
   private filterByMonth(selectedItems) {
@@ -808,50 +995,49 @@ export default class DocumentCrud extends React.Component<
         cloned,
         policiesUser
       );
-      const clonedList = this.setStateAvgRate(
-        policiesUser,
-        clonedListWithFavorite
-      );
-      let filteredList = [];
-      stringMonth.forEach(s => {
-        clonedList
-          .filter(f => f.Month.includes(s))
-          .map(item => filteredList.push(item));
+      const rateAverage = this.connectAndReadRateAverage();
+      rateAverage.then(avg => {
+        const clonedList = this.setStateAvgRate(avg, clonedListWithFavorite);
+        let filteredList = [];
+        stringMonth.forEach(s => {
+          clonedList
+            .filter(f => f.Month.includes(s))
+            .map(item => filteredList.push(item));
+        });
+        let uniqueItems = new Set(filteredList.map(unique => unique));
+        let documentFiles = [];
+        uniqueItems.forEach(u => {
+          documentFiles.push(u);
+        });
+        this.setState({
+          documentFiles: stringMonth.length > 0 ? documentFiles : clonedList,
+          joinPolicyCategoryItems:
+            stringMonth.length > 0 ? documentFiles : clonedList,
+          joinRegulatoryTopicItems:
+            stringMonth.length > 0 ? documentFiles : clonedList,
+          joinYearItems: stringMonth.length > 0 ? documentFiles : clonedList,
+          anyMonthSelected: stringMonth.length > 0 ? true : false,
+          status: `Successfully loaded ${
+            stringMonth.length > 0 ? documentFiles.length : clonedList.length
+          } items`,
+          statusIndicator: 1
+        });
+        if (!this.state.anyPolicyCategorySelected) {
+          this.dropDownPolicyCategory(
+            stringMonth.length > 0 ? documentFiles : clonedList
+          );
+        }
+        if (!this.state.anyRegulatoryTopicSelected) {
+          this.dropDownRegulatoryTopic(
+            stringMonth.length > 0 ? documentFiles : clonedList
+          );
+        }
+        if (!this.state.anyYearSelected) {
+          this.dropDownDateYear(
+            stringMonth.length > 0 ? documentFiles : clonedList
+          );
+        }
       });
-      let uniqueItems = new Set(filteredList.map(unique => unique));
-      let documentFiles = [];
-      uniqueItems.forEach(u => {
-        documentFiles.push(u);
-      });
-      this.setState({
-        documentFiles: stringMonth.length > 0 ? documentFiles : clonedList,
-        joinPolicyCategoryItems:
-          stringMonth.length > 0 ? documentFiles : clonedList,
-        joinRegulatoryTopicItems:
-          stringMonth.length > 0 ? documentFiles : clonedList,
-        joinYearItems: stringMonth.length > 0 ? documentFiles : clonedList,
-        anyMonthSelected: stringMonth.length > 0 ? true : false,
-        status: `Successfully loaded ${
-          stringMonth.length > 0 ? documentFiles.length : clonedList.length
-        } items`,
-        statusIndicator: 1
-      });
-
-      if (!this.state.anyPolicyCategorySelected) {
-        this.dropDownPolicyCategory(
-          stringMonth.length > 0 ? documentFiles : clonedList
-        );
-      }
-      if (!this.state.anyRegulatoryTopicSelected) {
-        this.dropDownRegulatoryTopic(
-          stringMonth.length > 0 ? documentFiles : clonedList
-        );
-      }
-      if (!this.state.anyYearSelected) {
-        this.dropDownDateYear(
-          stringMonth.length > 0 ? documentFiles : clonedList
-        );
-      }
     });
   }
   private selectItems(selectedItems, stringList) {
@@ -927,7 +1113,6 @@ export default class DocumentCrud extends React.Component<
     });
   }
   private leftOuterJoinPolicyUser(a, b) {
-    // console.log(b);
     let result = [];
     a.forEach(policy => {
       let found = false;
@@ -945,7 +1130,8 @@ export default class DocumentCrud extends React.Component<
             Year: policy.Year,
             Month: policy.Month,
             NewDocumentExpired: policy.NewDocumentExpired,
-            Favorite: policyUser.Favorite
+            Favorite: policyUser.Favorite,
+            Rate: policyUser.Rate
           });
           found = true;
         }
@@ -964,14 +1150,14 @@ export default class DocumentCrud extends React.Component<
           Year: policy.Year,
           Month: policy.Month,
           NewDocumentExpired: policy.NewDocumentExpired,
-          Favorite: 0
+          Favorite: 0,
+          Rate: 0
         });
       }
     });
     return result;
   }
   private setStateAvgRate(avgResponse, result) {
-    console.log(result);
     let avgList = [];
     avgResponse.forEach(element => {
       avgList.push({
@@ -1001,7 +1187,6 @@ export default class DocumentCrud extends React.Component<
     });
     let results = [];
     for (let x = 0; x < result.length; x++) {
-      const diffDays = this.getDiffDays(result[x].Date_x0020_of_x0020_approval);
       let foundX = false;
       if (result[x].Rate) {
         for (let y = 0; y < avgGroupedData.length; y++) {
@@ -1061,6 +1246,13 @@ export default class DocumentCrud extends React.Component<
       }
     }
     return results;
+  }
+  private _showDialog(policyNumberState): void {
+    this.setState({ hideDialog: false, policyNumberState, show: 1 });
+  }
+
+  private _closeDialog(): void {
+    this.setState({ hideDialog: true });
   }
 
   private listNotConfigured(props: ISearchMaskProps): boolean {

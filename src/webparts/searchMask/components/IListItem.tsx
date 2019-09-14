@@ -12,6 +12,7 @@ export interface IListItem {
   NewDocumentExpired: number;
   Favorite: number;
   Rate: number;
+  Comment: string;
 }
 
 export interface IPolicyUser {
