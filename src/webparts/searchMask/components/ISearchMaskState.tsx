@@ -23,6 +23,5 @@ export interface ISearchMaskState {
   anyMonthSelected: boolean;
   hideDialog: boolean;
   commentState: string;
-  policyNumberState: number;
-  show: number;
+  policyNumber: number;
 }

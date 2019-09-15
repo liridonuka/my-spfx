@@ -61,8 +61,7 @@ export default class DocumentCrud extends React.Component<
       anyMonthSelected: false,
       hideDialog: true,
       commentState: "",
-      policyNumberState: 0,
-      show: 0
+      policyNumber: 0
     };
   }
   public render(): React.ReactElement<ISearchMaskProps> {
@@ -225,15 +224,16 @@ export default class DocumentCrud extends React.Component<
                       max={5}
                       rating={document.Rate}
                       onChanged={
-                        !document.Rate && !document.Favorite
-                          ? this.addRating.bind(
+                        document.Rate || document.Favorite
+                          ? this.updateRate.bind(
                               this,
                               document.Name,
                               document.Id,
                               document.DocumentLink,
-                              this.state.documentFiles
+                              this.state.documentFiles,
+                              document.Comment
                             )
-                          : this.updateRate.bind(
+                          : this.addRating.bind(
                               this,
                               document.Name,
                               document.Id,
@@ -272,7 +272,7 @@ export default class DocumentCrud extends React.Component<
                         <DefaultButton
                           onClick={() =>
                             this.updateComent(
-                              this.state.policyNumberState,
+                              this.state.policyNumber,
                               this.state.documentFiles,
                               this.state.commentState
                             )
@@ -341,7 +341,14 @@ export default class DocumentCrud extends React.Component<
         );
     });
   }
-  private updateRate(title, policyNumber, docLink, policies, rate): void {
+  private updateRate(
+    title,
+    policyNumber,
+    docLink,
+    policies,
+    comment,
+    rate
+  ): void {
     this.setState({ statusIndicator: 0 });
     const selectedPolicy = this.connectAndReadPolicyUserById(policyNumber);
     selectedPolicy.then(selected => {
@@ -378,7 +385,8 @@ export default class DocumentCrud extends React.Component<
           }
         );
     });
-    if (this.state.show === 0) {
+    if (!comment) {
+      console.log("Updating...");
       this._showDialog(policyNumber);
     }
   }
@@ -1178,6 +1186,7 @@ export default class DocumentCrud extends React.Component<
       l[key].count += 1;
       return l;
     }, {});
+
     let avgGroupedData = Object.keys(groupeData).map(key => {
       let keyParts = key.split(/\|/);
       return {
@@ -1247,8 +1256,8 @@ export default class DocumentCrud extends React.Component<
     }
     return results;
   }
-  private _showDialog(policyNumberState): void {
-    this.setState({ hideDialog: false, policyNumberState, show: 1 });
+  private _showDialog(policyNumber): void {
+    this.setState({ hideDialog: false, policyNumber });
   }
 
   private _closeDialog(): void {
