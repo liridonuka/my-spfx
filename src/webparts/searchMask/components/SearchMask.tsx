@@ -61,10 +61,14 @@ export default class DocumentCrud extends React.Component<
       anyMonthSelected: false,
       hideDialog: true,
       commentState: "",
-      policyNumber: 0
+      policyNumber: 0,
+      rateState: 0
     };
   }
   public render(): React.ReactElement<ISearchMaskProps> {
+    const disabled: string = this.listNotConfigured(this.props)
+      ? styles.disabled
+      : "";
     return (
       <div className={styles.searchMask}>
         <div>
@@ -373,7 +377,8 @@ export default class DocumentCrud extends React.Component<
                 const documentFiles = this.setStateAvgRate(avg, documents);
                 this.setState({
                   documentFiles,
-                  statusIndicator: 1
+                  statusIndicator: 1,
+                  rateState: policyNumber !== this.state.policyNumber ? 0 : 1
                 });
               });
             });
@@ -385,8 +390,7 @@ export default class DocumentCrud extends React.Component<
           }
         );
     });
-    if (!comment) {
-      console.log("Updating...");
+    if (this.state.rateState === 0 || rate === 0) {
       this._showDialog(policyNumber);
     }
   }
@@ -417,7 +421,8 @@ export default class DocumentCrud extends React.Component<
               this.setState({
                 documentFiles,
                 status: `${title} was added to favorites`,
-                statusIndicator: 1
+                statusIndicator: 1,
+                rateState: policyNumber !== this.state.policyNumber ? 0 : 1
               });
             });
           });
@@ -457,7 +462,8 @@ export default class DocumentCrud extends React.Component<
               this.setState({
                 documentFiles,
                 status: `${title} was added to favorites`,
-                statusIndicator: 1
+                statusIndicator: 1,
+                rateState: 0
               });
             });
           });
@@ -1254,10 +1260,13 @@ export default class DocumentCrud extends React.Component<
         });
       }
     }
-    return results;
+    results = results.sort((asc, desc) =>
+      asc.ApprovedDate < desc.ApprovedDate ? 1 : -1
+    );
+    return results.sort((asc, desc) => desc.Favorite - asc.Favorite);
   }
   private _showDialog(policyNumber): void {
-    this.setState({ hideDialog: false, policyNumber });
+    this.setState({ hideDialog: false, policyNumber, rateState: 1 });
   }
 
   private _closeDialog(): void {
