@@ -9,6 +9,7 @@ import { Icon } from "office-ui-fabric-react/lib/Icon";
 import { Rating, RatingSize } from "office-ui-fabric-react/lib/Rating";
 import { Spinner, SpinnerSize } from "office-ui-fabric-react/lib/Spinner";
 import { TextField } from "office-ui-fabric-react/lib/TextField";
+import { Panel, PanelType } from "office-ui-fabric-react/lib/Panel";
 import {
   PrimaryButton,
   DefaultButton
@@ -62,13 +63,20 @@ export default class DocumentCrud extends React.Component<
       hideDialog: true,
       commentState: "",
       policyNumber: 0,
-      rateState: 0
+      rateState: 0,
+      showPanel: false
     };
   }
+  public componentWillReceiveProps(nextProps: ISearchMaskProps): void {
+    this.setState({
+      status: this.listNotConfigured(nextProps)
+        ? "Please configure list in Web Part properties"
+        : "Ready",
+      documentFiles: []
+    });
+  }
+
   public render(): React.ReactElement<ISearchMaskProps> {
-    const disabled: string = this.listNotConfigured(this.props)
-      ? styles.disabled
-      : "";
     return (
       <div className={styles.searchMask}>
         <div>
@@ -134,43 +142,50 @@ export default class DocumentCrud extends React.Component<
               this.state.statusIndicator === 0 ? styles.divDisabled : undefined
             }
           >
-            <div className={styles.statusDivStyle}>{this.state.status}</div>
+            <div className={styles.statusDivStyle}>
+              {this.state.status}{" "}
+              <a href="#" onClick={() => this._showPanel()}>
+                {" "}
+                Show
+              </a>
+            </div>
 
-            {this.state.documentFiles.map(document => (
+            {this.state.documentFiles.slice(0, 3).map(document => (
               <div className={styles.rowDivStyle}>
                 <div className={styles.policyInline}>
                   <Icon
                     onClick={
                       document.Favorite === 1 && document.Rate === 0
-                        ? () =>
-                            this.removeFromFavorites(
-                              document.Name,
-                              document.Id,
-                              this.state.documentFiles
-                            )
+                        ? this.removeFromFavorites.bind(
+                            this,
+                            document.Name,
+                            document.Id,
+                            this.state.documentFiles,
+                            document.Favorite === 1 ? 0 : 1
+                          )
                         : document.Favorite === 1 && document.Rate > 0
-                        ? () =>
-                            this.updateFavorites(
-                              document.Name,
-                              document.Id,
-                              this.state.documentFiles,
-                              0
-                            )
+                        ? this.updateFavorites.bind(
+                            this,
+                            document.Name,
+                            document.Id,
+                            this.state.documentFiles,
+                            0
+                          )
                         : document.Favorite === 0 && document.Rate > 0
-                        ? () =>
-                            this.updateFavorites(
-                              document.Name,
-                              document.Id,
-                              this.state.documentFiles,
-                              1
-                            )
-                        : () =>
-                            this.addToFavorite(
-                              document.Name,
-                              document.Id,
-                              document.DocumentLink,
-                              this.state.documentFiles
-                            )
+                        ? this.updateFavorites.bind(
+                            this,
+                            document.Name,
+                            document.Id,
+                            this.state.documentFiles,
+                            1
+                          )
+                        : this.addToFavorite.bind(
+                            this,
+                            document.Name,
+                            document.Id,
+                            document.DocumentLink,
+                            this.state.documentFiles
+                          )
                     }
                     iconName={
                       document.Favorite === 1
@@ -293,6 +308,183 @@ export default class DocumentCrud extends React.Component<
                 </div>
               </div>
             ))}
+            <Panel
+              isOpen={this.state.showPanel}
+              type={PanelType.smallFluid}
+              onDismiss={() => this._hidePanel()}
+              headerText="Panel - Small, right-aligned, fixed"
+            >
+              <div className={styles.searchMask}>
+                {this.state.documentFiles.map(document => (
+                  <div className={styles.rowDivStyle}>
+                    <div className={styles.policyInline}>
+                      <Icon
+                        onClick={
+                          document.Favorite === 1 && document.Rate === 0
+                            ? this.removeFromFavorites.bind(
+                                this,
+                                document.Name,
+                                document.Id,
+                                this.state.documentFiles,
+                                document.Favorite === 1 ? 0 : 1
+                              )
+                            : document.Favorite === 1 && document.Rate > 0
+                            ? this.updateFavorites.bind(
+                                this,
+                                document.Name,
+                                document.Id,
+                                this.state.documentFiles,
+                                0
+                              )
+                            : document.Favorite === 0 && document.Rate > 0
+                            ? this.updateFavorites.bind(
+                                this,
+                                document.Name,
+                                document.Id,
+                                this.state.documentFiles,
+                                1
+                              )
+                            : this.addToFavorite.bind(
+                                this,
+                                document.Name,
+                                document.Id,
+                                document.DocumentLink,
+                                this.state.documentFiles
+                              )
+                        }
+                        iconName={
+                          document.Favorite === 1
+                            ? "SingleBookmarkSolid"
+                            : "AddBookmark"
+                        }
+                        title="Add to bookmark"
+                        style={{ cursor: "pointer" }}
+                      />
+                      &nbsp;
+                      <Icon
+                        onClick={() => this.entryView(document.Id)}
+                        iconName="EntryView"
+                        title="Policy details"
+                        style={{ cursor: "pointer" }}
+                      />
+                    </div>
+                    &nbsp;
+                    <div
+                      className={`${styles.policyInline} ${styles.divGlimmer}`}
+                    >
+                      <Icon
+                        title="New policy"
+                        iconName={
+                          parseFloat(document.Version) <= 1
+                            ? document.NewDocumentExpired < 7
+                              ? "glimmer"
+                              : undefined
+                            : undefined
+                        }
+                        className={styles.iconGlimmer}
+                      />
+                    </div>
+                    <div className={styles.policyInline}>
+                      <a
+                        className={styles.linkPolicies}
+                        href={document.DocumentLink}
+                      >
+                        {document.PolicyNumber} {document.Name} {" v"}
+                        {document.Version}
+                      </a>
+                    </div>
+                    <div>
+                      <div
+                        title="Approved date"
+                        className={styles.policyInline}
+                      >
+                        <Icon
+                          iconName="Calendar"
+                          className={styles.iconCalendar}
+                        />
+                        &nbsp;
+                        <div
+                          className={`${styles.policyInline} ${styles.textApprovedDate}`}
+                        >
+                          {document.ApprovedDate}
+                        </div>
+                      </div>
+                      &nbsp;
+                      <div
+                        className={`${styles.policyInline} ${styles.rateDiv}`}
+                      >
+                        <Rating
+                          min={0}
+                          max={5}
+                          rating={document.Rate}
+                          onChanged={
+                            document.Rate || document.Favorite
+                              ? this.updateRate.bind(
+                                  this,
+                                  document.Name,
+                                  document.Id,
+                                  document.DocumentLink,
+                                  this.state.documentFiles,
+                                  document.Comment
+                                )
+                              : this.addRating.bind(
+                                  this,
+                                  document.Name,
+                                  document.Id,
+                                  document.DocumentLink,
+                                  this.state.documentFiles
+                                )
+                          }
+                        />
+                      </div>
+                      <div>
+                        {/* <DefaultButton
+                      secondaryText="Opens the Sample Dialog"
+                      onClick={() => this._showDialog()}
+                      text="Open Dialog"
+                    /> */}
+                        <Dialog
+                          hidden={this.state.hideDialog}
+                          onDismiss={() => this._closeDialog()}
+                          dialogContentProps={{
+                            type: DialogType.largeHeader,
+                            title: "Policy comment",
+                            subText:
+                              "Your Inbox has changed. No longer does it include favorites, it is a singular destination for your emails."
+                          }}
+                          modalProps={{
+                            isBlocking: false
+                          }}
+                        >
+                          <TextField
+                            label="Standard"
+                            multiline
+                            rows={8}
+                            onChanged={this.commentState.bind(this)}
+                          />
+                          <DialogFooter>
+                            <DefaultButton
+                              onClick={() =>
+                                this.updateComent(
+                                  this.state.policyNumber,
+                                  this.state.documentFiles,
+                                  this.state.commentState
+                                )
+                              }
+                              text="Comment"
+                            />
+                            <PrimaryButton
+                              onClick={() => this._closeDialog()}
+                              text="Close"
+                            />
+                          </DialogFooter>
+                        </Dialog>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Panel>
           </div>
         </div>
       </div>
@@ -1271,6 +1463,14 @@ export default class DocumentCrud extends React.Component<
 
   private _closeDialog(): void {
     this.setState({ hideDialog: true });
+  }
+  private _showPanel(): void {
+    console.log("Hit");
+    this.setState({ showPanel: true });
+  }
+
+  private _hidePanel(): void {
+    this.setState({ showPanel: false });
   }
 
   private listNotConfigured(props: ISearchMaskProps): boolean {
