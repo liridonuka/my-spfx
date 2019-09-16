@@ -24,6 +24,5 @@ export interface ISearchMaskState {
   hideDialog: boolean;
   commentState: string;
   policyNumber: number;
-  rateState: number;
   showPanel: boolean;
 }

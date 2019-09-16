@@ -63,7 +63,6 @@ export default class DocumentCrud extends React.Component<
       hideDialog: true,
       commentState: "",
       policyNumber: 0,
-      rateState: 0,
       showPanel: false
     };
   }
@@ -311,7 +310,7 @@ export default class DocumentCrud extends React.Component<
             <Panel
               isOpen={this.state.showPanel}
               type={PanelType.smallFluid}
-              onDismiss={() => this._hidePanel()}
+              // onDismiss={() => this._hidePanel()}
               headerText="Panel - Small, right-aligned, fixed"
             >
               <div className={styles.searchMask}>
@@ -545,7 +544,7 @@ export default class DocumentCrud extends React.Component<
     comment,
     rate
   ): void {
-    this.setState({ statusIndicator: 0 });
+    this.setState({ statusIndicator: 1 });
     const selectedPolicy = this.connectAndReadPolicyUserById(policyNumber);
     selectedPolicy.then(selected => {
       let web = new Web(this.props.context.pageContext.web.absoluteUrl);
@@ -569,8 +568,7 @@ export default class DocumentCrud extends React.Component<
                 const documentFiles = this.setStateAvgRate(avg, documents);
                 this.setState({
                   documentFiles,
-                  statusIndicator: 1,
-                  rateState: policyNumber !== this.state.policyNumber ? 0 : 1
+                  statusIndicator: 1
                 });
               });
             });
@@ -582,12 +580,9 @@ export default class DocumentCrud extends React.Component<
           }
         );
     });
-    if (this.state.rateState === 0 || rate === 0) {
-      this._showDialog(policyNumber);
-    }
   }
   private addRating(title, policyNumber, docLink, policies, rate): void {
-    this.setState({ statusIndicator: 0 });
+    this.setState({ statusIndicator: 1 });
     let web = new Web(this.props.context.pageContext.web.absoluteUrl);
     web.lists
       .getByTitle("PolicyUser")
@@ -613,8 +608,7 @@ export default class DocumentCrud extends React.Component<
               this.setState({
                 documentFiles,
                 status: `${title} was added to favorites`,
-                statusIndicator: 1,
-                rateState: policyNumber !== this.state.policyNumber ? 0 : 1
+                statusIndicator: 1
               });
             });
           });
@@ -654,8 +648,7 @@ export default class DocumentCrud extends React.Component<
               this.setState({
                 documentFiles,
                 status: `${title} was added to favorites`,
-                statusIndicator: 1,
-                rateState: 0
+                statusIndicator: 1
               });
             });
           });
@@ -668,7 +661,13 @@ export default class DocumentCrud extends React.Component<
       );
   }
   private updateFavorites(title, policyNumber, policies, favorite): void {
-    this.setState({ status: "Updating favorites...", statusIndicator: 0 });
+    this.setState({
+      status:
+        favorite === 1
+          ? "Adding to favorites..."
+          : "Removing from favorites...",
+      statusIndicator: 1
+    });
     const selectedPolicy = this.connectAndReadPolicyUserById(policyNumber);
     selectedPolicy.then(selected => {
       let web = new Web(this.props.context.pageContext.web.absoluteUrl);
@@ -692,7 +691,10 @@ export default class DocumentCrud extends React.Component<
                 const documentFiles = this.setStateAvgRate(avg, documents);
                 this.setState({
                   documentFiles,
-                  status: `${title} Updated`,
+                  status:
+                    favorite === 1
+                      ? `${title} was added to favorites`
+                      : `${title} was removed from favorites`,
                   statusIndicator: 1
                 });
               });
@@ -967,8 +969,8 @@ export default class DocumentCrud extends React.Component<
     );
     this.setState({
       stringPolicyCategory,
-      statusIndicator: 0,
-      status: "Loading all items..."
+      statusIndicator: 1,
+      status: "Applying filters..."
     });
     const cloned = this.clonedList(
       this.state.anyRegulatoryTopicSelected ||
@@ -1042,8 +1044,8 @@ export default class DocumentCrud extends React.Component<
     );
     this.setState({
       stringRegulatoryTopic,
-      statusIndicator: 0,
-      status: "Loading all items..."
+      statusIndicator: 1,
+      status: "Applying filters..."
     });
     const cloned = this.clonedList(
       this.state.anyPolicyCategorySelected ||
@@ -1115,8 +1117,8 @@ export default class DocumentCrud extends React.Component<
     const stringYear = this.selectItems(selectedItems, this.state.stringYear);
     this.setState({
       stringYear,
-      statusIndicator: 0,
-      status: "Loading all items..."
+      statusIndicator: 1,
+      status: "Applying filters..."
     });
     const cloned = this.clonedList(
       this.state.anyPolicyCategorySelected ||
@@ -1183,8 +1185,8 @@ export default class DocumentCrud extends React.Component<
     const stringMonth = this.selectItems(selectedItems, this.state.stringMonth);
     this.setState({
       stringMonth,
-      statusIndicator: 0,
-      status: "Loading all items..."
+      statusIndicator: 1,
+      status: "Applying filters..."
     });
     const cloned = this.clonedList(
       this.state.anyPolicyCategorySelected ||
@@ -1452,13 +1454,11 @@ export default class DocumentCrud extends React.Component<
         });
       }
     }
-    results = results.sort((asc, desc) =>
-      asc.ApprovedDate < desc.ApprovedDate ? 1 : -1
-    );
-    return results.sort((asc, desc) => desc.Favorite - asc.Favorite);
+
+    return results;
   }
   private _showDialog(policyNumber): void {
-    this.setState({ hideDialog: false, policyNumber, rateState: 1 });
+    this.setState({ hideDialog: false, policyNumber });
   }
 
   private _closeDialog(): void {
