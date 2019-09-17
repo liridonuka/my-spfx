@@ -64,7 +64,7 @@ export default class DocumentCrud extends React.Component<
       commentState: "",
       policyNumber: 0,
       showPanel: false,
-      itemsLengthDisplayed: 3
+      itemsLengthDisplayed: 2
     };
   }
   public componentWillReceiveProps(nextProps: ISearchMaskProps): void {
@@ -910,6 +910,9 @@ export default class DocumentCrud extends React.Component<
       const rateAverage = this.connectAndReadRateAverage();
       rateAverage.then(avg => {
         const documentFiles = this.setStateAvgRate(avg, documents);
+        documentFiles.sort((a, b) =>
+          a.ApprovedDate < b.ApprovedDate ? 1 : -1
+        );
         this.setState({
           documentFiles,
           internalPolicies: documentFiles,
@@ -1025,11 +1028,11 @@ export default class DocumentCrud extends React.Component<
             stringPolicyCategory.length > 0 ? documentFiles : clonedList,
           anyPolicyCategorySelected:
             stringPolicyCategory.length > 0 ? true : false,
-          status: `Displaying ${this.state.itemsLengthDisplayed} of ${
-            stringPolicyCategory.length > 0
-              ? documentFiles.length
-              : clonedList.length
-          } items`,
+          status: this.statuLogic(
+            stringPolicyCategory.length,
+            documentFiles.length,
+            clonedList.length
+          ),
           statusIndicator: 1
         });
         if (!this.state.anyRegulatoryTopicSelected) {
@@ -1049,6 +1052,14 @@ export default class DocumentCrud extends React.Component<
         }
       });
     });
+  }
+  private statuLogic(selectedItems, policies, clonedList) {
+    let status = "";
+    let myList = selectedItems > 0 ? policies : clonedList;
+    return (status =
+      this.state.itemsLengthDisplayed <= myList
+        ? `Displaying ${this.state.itemsLengthDisplayed} of ${myList} items`
+        : `Displaying ${myList} of ${this.state.itemsLengthDisplayed} items`);
   }
   private filterByRegulatoryTopic(selectedItems) {
     const stringRegulatoryTopic = this.selectItems(
@@ -1100,11 +1111,11 @@ export default class DocumentCrud extends React.Component<
             stringRegulatoryTopic.length > 0 ? documentFiles : clonedList,
           anyRegulatoryTopicSelected:
             stringRegulatoryTopic.length > 0 ? true : false,
-          status: `Displaying ${this.state.itemsLengthDisplayed} of ${
-            stringRegulatoryTopic.length > 0
-              ? documentFiles.length
-              : clonedList.length
-          } items`,
+          status: this.statuLogic(
+            stringRegulatoryTopic.length,
+            documentFiles.length,
+            clonedList.length
+          ),
           statusIndicator: 1
         });
 
@@ -1170,9 +1181,11 @@ export default class DocumentCrud extends React.Component<
             stringYear.length > 0 ? documentFiles : clonedList,
           joinMonthItems: stringYear.length > 0 ? documentFiles : clonedList,
           anyYearSelected: stringYear.length > 0 ? true : false,
-          status: `Displaying ${this.state.itemsLengthDisplayed} of ${
-            stringYear.length > 0 ? documentFiles.length : clonedList.length
-          } items`,
+          status: this.statuLogic(
+            stringYear.length,
+            documentFiles.length,
+            clonedList.length
+          ),
           statusIndicator: 1
         });
 
@@ -1238,9 +1251,11 @@ export default class DocumentCrud extends React.Component<
             stringMonth.length > 0 ? documentFiles : clonedList,
           joinYearItems: stringMonth.length > 0 ? documentFiles : clonedList,
           anyMonthSelected: stringMonth.length > 0 ? true : false,
-          status: `Displaying ${this.state.itemsLengthDisplayed} of ${
-            stringMonth.length > 0 ? documentFiles.length : clonedList.length
-          } items`,
+          status: this.statuLogic(
+            stringMonth.length,
+            documentFiles.length,
+            clonedList.length
+          ),
           statusIndicator: 1
         });
         if (!this.state.anyPolicyCategorySelected) {
@@ -1468,7 +1483,7 @@ export default class DocumentCrud extends React.Component<
       }
     }
 
-    return results.sort((a, b) => (a.ApprovedDate < b.ApprovedDate ? 1 : -1));
+    return results;
   }
   private _showDialog(policyNumber): void {
     this.setState({ hideDialog: false, policyNumber });
