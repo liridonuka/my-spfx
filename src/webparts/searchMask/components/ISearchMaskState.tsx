@@ -25,4 +25,5 @@ export interface ISearchMaskState {
   commentState: string;
   policyNumber: number;
   showPanel: boolean;
+  itemsLengthDisplayed: number;
 }

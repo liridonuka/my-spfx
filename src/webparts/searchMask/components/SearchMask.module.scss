@@ -265,12 +265,16 @@
   .italic {
     font-style: italic;
   }
+  .wait {
+    cursor: wait;
+  }
 
   .divDisabled {
-    background-color: #f4f4f4;
-    border-color: #f4f4f4;
+    //
+    // background-color: #f4f4f4;
+    // border-color: #f4f4f4;
     pointer-events: none;
-    opacity: 0.2;
+    // opacity: 0.2;
   }
 
   .policyInline {
