@@ -21,7 +21,8 @@ export interface ISearchMaskState {
   anyRegulatoryTopicSelected: boolean;
   anyYearSelected: boolean;
   anyMonthSelected: boolean;
-  hideDialog: boolean;
+  hideComment: boolean;
+  hideCommentInPanel: boolean;
   commentState: string;
   policyNumber: number;
   showPanel: boolean;

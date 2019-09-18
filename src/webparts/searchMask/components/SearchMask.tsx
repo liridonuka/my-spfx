@@ -60,11 +60,12 @@ export default class DocumentCrud extends React.Component<
       anyRegulatoryTopicSelected: false,
       anyYearSelected: false,
       anyMonthSelected: false,
-      hideDialog: true,
+      hideComment: true,
+      hideCommentInPanel: true,
       commentState: "",
       policyNumber: 0,
-      showPanel: false,
-      itemsLengthDisplayed: 2
+      showPanel: true,
+      itemsLengthDisplayed: 3
     };
   }
   public componentWillReceiveProps(nextProps: ISearchMaskProps): void {
@@ -136,14 +137,14 @@ export default class DocumentCrud extends React.Component<
                 : ""}
               <a
                 className={styles.linkPolicies}
-                style={{ color: "white" }}
+                style={{ color: "white", fontWeight: "bold" }}
                 href="#"
                 onClick={() => this.setState({ showPanel: true })}
               >
                 {" "}
                 {this.state.documentFiles.length >
                 this.state.itemsLengthDisplayed
-                  ? "more"
+                  ? "Show more"
                   : ""}
               </a>
             </div>
@@ -269,20 +270,19 @@ export default class DocumentCrud extends React.Component<
                     </div>
                     <div>
                       <Dialog
-                        hidden={this.state.hideDialog}
-                        onDismiss={() => this._closeDialog()}
+                        hidden={this.state.hideComment}
+                        onDismiss={() => this.setState({ hideComment: true })}
                         dialogContentProps={{
                           type: DialogType.largeHeader,
-                          title: "Policy comment",
-                          subText:
-                            "Your Inbox has changed. No longer does it include favorites, it is a singular destination for your emails."
+                          title: this.props.commentDialogTitle,
+                          subText: this.props.commentDialogSubTitle
                         }}
                         modalProps={{
                           isBlocking: false
                         }}
                       >
                         <TextField
-                          label="Standard"
+                          label="Comment"
                           multiline
                           rows={8}
                           onChanged={this.commentState.bind(this)}
@@ -299,7 +299,7 @@ export default class DocumentCrud extends React.Component<
                             text="Comment"
                           />
                           <PrimaryButton
-                            onClick={() => this._closeDialog()}
+                            onClick={() => this.setState({ hideComment: true })}
                             text="Close"
                           />
                         </DialogFooter>
@@ -454,13 +454,14 @@ export default class DocumentCrud extends React.Component<
                           </div>
                           <div>
                             <Dialog
-                              hidden={this.state.hideDialog}
-                              onDismiss={() => this._closeDialog()}
+                              hidden={this.state.hideCommentInPanel}
+                              onDismiss={() =>
+                                this.setState({ hideCommentInPanel: true })
+                              }
                               dialogContentProps={{
                                 type: DialogType.largeHeader,
-                                title: "Policy comment",
-                                subText:
-                                  "Your Inbox has changed. No longer does it include favorites, it is a singular destination for your emails."
+                                title: this.props.commentDialogTitle,
+                                subText: this.props.commentDialogSubTitle
                               }}
                               modalProps={{
                                 isBlocking: false
@@ -484,7 +485,9 @@ export default class DocumentCrud extends React.Component<
                                   text="Comment"
                                 />
                                 <PrimaryButton
-                                  onClick={() => this._closeDialog()}
+                                  onClick={() =>
+                                    this.setState({ hideCommentInPanel: true })
+                                  }
                                   text="Close"
                                 />
                               </DialogFooter>
@@ -516,7 +519,7 @@ export default class DocumentCrud extends React.Component<
     selectedPolicy.then(selected => {
       let web = new Web(this.props.context.pageContext.web.absoluteUrl);
       web.lists
-        .getByTitle("PolicyUser")
+        .getByTitle(this.props.joinListName)
         .items.getById(selected)
         .update({
           Comment: comment
@@ -535,8 +538,10 @@ export default class DocumentCrud extends React.Component<
                 const documentFiles = this.setStateAvgRate(avg, documents);
                 this.setState({
                   documentFiles,
-                  hideDialog: true,
-                  statusIndicator: 1
+                  hideComment: true,
+                  hideCommentInPanel: true,
+                  statusIndicator: 1,
+                  commentState: ""
                 });
               });
             });
@@ -562,7 +567,7 @@ export default class DocumentCrud extends React.Component<
     selectedPolicy.then(selected => {
       let web = new Web(this.props.context.pageContext.web.absoluteUrl);
       web.lists
-        .getByTitle("PolicyUser")
+        .getByTitle(this.props.joinListName)
         .items.getById(selected)
         .update({
           Rate: rate
@@ -598,7 +603,7 @@ export default class DocumentCrud extends React.Component<
     this.setState({ statusIndicator: 0 });
     let web = new Web(this.props.context.pageContext.web.absoluteUrl);
     web.lists
-      .getByTitle("PolicyUser")
+      .getByTitle(this.props.joinListName)
       .items.add({
         Title: title,
         PolicyNumber: policyNumber,
@@ -620,8 +625,10 @@ export default class DocumentCrud extends React.Component<
               const documentFiles = this.setStateAvgRate(avg, documents);
               this.setState({
                 documentFiles,
-                status: `${title} was added to favorites`,
-                statusIndicator: 1
+                statusIndicator: 1,
+                policyNumber,
+                hideComment: this.state.hideCommentInPanel ? false : true,
+                hideCommentInPanel: this.state.hideComment ? false : true
               });
             });
           });
@@ -632,13 +639,12 @@ export default class DocumentCrud extends React.Component<
           });
         }
       );
-    this._showDialog(policyNumber);
   }
   private addToFavorite(title, policyNumber, docLink, policies): void {
     this.setState({ status: "Adding to favorites...", statusIndicator: 0 });
     let web = new Web(this.props.context.pageContext.web.absoluteUrl);
     web.lists
-      .getByTitle("PolicyUser")
+      .getByTitle(this.props.joinListName)
       .items.add({
         Title: title,
         PolicyNumber: policyNumber,
@@ -685,7 +691,7 @@ export default class DocumentCrud extends React.Component<
     selectedPolicy.then(selected => {
       let web = new Web(this.props.context.pageContext.web.absoluteUrl);
       web.lists
-        .getByTitle("PolicyUser")
+        .getByTitle(this.props.joinListName)
         .items.getById(selected)
         .update({
           Favorite: favorite
@@ -727,7 +733,7 @@ export default class DocumentCrud extends React.Component<
     selectedPolicy.then(selected => {
       let web = new Web(this.props.context.pageContext.web.absoluteUrl);
       web.lists
-        .getByTitle("PolicyUser")
+        .getByTitle(this.props.joinListName)
         .items.getById(selected)
         .delete()
         .then(
@@ -768,7 +774,7 @@ export default class DocumentCrud extends React.Component<
           reject: (error: any) => void
         ): void => {
           web.lists
-            .getByTitle("PolicyUser")
+            .getByTitle(this.props.joinListName)
             .items.filter(
               `AuthorId eq '${userId}' and PolicyNumber eq '${policyNumber}'`
             )
@@ -793,7 +799,7 @@ export default class DocumentCrud extends React.Component<
   private connectAndReadRateAverage() {
     const web = new Web(this.props.context.pageContext.web.absoluteUrl);
     return web.lists
-      .getByTitle("PolicyUser")
+      .getByTitle(this.props.joinListName)
       .items.select("PolicyNumber", "Rate")
       .get()
       .then(
@@ -812,7 +818,7 @@ export default class DocumentCrud extends React.Component<
     return ama.then(userId => {
       const web = new Web(this.props.context.pageContext.web.absoluteUrl);
       return web.lists
-        .getByTitle("PolicyUser")
+        .getByTitle(this.props.joinListName)
         .items.filter(`AuthorId eq '${userId}'`)
         .get()
         .then(
@@ -1484,20 +1490,6 @@ export default class DocumentCrud extends React.Component<
     }
 
     return results;
-  }
-  private _showDialog(policyNumber): void {
-    this.setState({ hideDialog: false, policyNumber });
-  }
-
-  private _closeDialog(): void {
-    this.setState({ hideDialog: true });
-  }
-  private _showPanel(): void {
-    this.setState({ showPanel: true });
-  }
-
-  private _hidePanel(): void {
-    this.setState({ showPanel: false });
   }
 
   private listNotConfigured(props: ISearchMaskProps): boolean {

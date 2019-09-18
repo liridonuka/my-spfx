@@ -23,7 +23,10 @@ export default class SearchMaskWebPart extends BaseClientSideWebPart<
       SearchMask,
       {
         listName: this.properties.listName,
-        context: this.context
+        joinListName: this.properties.joinListName,
+        context: this.context,
+        commentDialogTitle: this.properties.commentDialogTitle,
+        commentDialogSubTitle: this.properties.commentDialogSubTitle
       }
     );
 
@@ -50,7 +53,16 @@ export default class SearchMaskWebPart extends BaseClientSideWebPart<
               groupName: strings.BasicGroupName,
               groupFields: [
                 PropertyPaneTextField("listName", {
-                  label: strings.DescriptionFieldLabel
+                  label: strings.DescriptionLibrary
+                }),
+                PropertyPaneTextField("joinListName", {
+                  label: strings.DescriptionJoinList
+                }),
+                PropertyPaneTextField("commentDialogTitle", {
+                  label: strings.CommentDialogTitle
+                }),
+                PropertyPaneTextField("commentDialogSubTitle", {
+                  label: strings.CommentDialogSubTitle
                 })
               ]
             }
