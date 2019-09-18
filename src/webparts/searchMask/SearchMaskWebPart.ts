@@ -4,7 +4,8 @@ import { Version } from "@microsoft/sp-core-library";
 import {
   BaseClientSideWebPart,
   IPropertyPaneConfiguration,
-  PropertyPaneTextField
+  PropertyPaneTextField,
+  PropertyPaneToggle
 } from "@microsoft/sp-webpart-base";
 
 import * as strings from "SearchMaskWebPartStrings";
@@ -26,7 +27,8 @@ export default class SearchMaskWebPart extends BaseClientSideWebPart<
         joinListName: this.properties.joinListName,
         context: this.context,
         commentDialogTitle: this.properties.commentDialogTitle,
-        commentDialogSubTitle: this.properties.commentDialogSubTitle
+        commentDialogSubTitle: this.properties.commentDialogSubTitle,
+        myWorkingSpace: this.properties.myWorkingSpace
       }
     );
 
@@ -57,6 +59,11 @@ export default class SearchMaskWebPart extends BaseClientSideWebPart<
                 }),
                 PropertyPaneTextField("joinListName", {
                   label: strings.DescriptionJoinList
+                }),
+                PropertyPaneToggle("myWorkingSpace", {
+                  label: strings.DescriptionMyWorkingSpace,
+                  onText: "Yes",
+                  offText: "No"
                 }),
                 PropertyPaneTextField("commentDialogTitle", {
                   label: strings.CommentDialogTitle

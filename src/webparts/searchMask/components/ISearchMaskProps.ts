@@ -5,4 +5,5 @@ export interface ISearchMaskProps {
   context: WebPartContext;
   commentDialogTitle: string;
   commentDialogSubTitle: string;
+  myWorkingSpace: boolean;
 }

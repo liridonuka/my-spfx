@@ -64,8 +64,8 @@ export default class DocumentCrud extends React.Component<
       hideCommentInPanel: true,
       commentState: "",
       policyNumber: 0,
-      showPanel: true,
-      itemsLengthDisplayed: 3
+      showPanel: this.props.myWorkingSpace ? true : false,
+      itemsLengthDisplayed: 7
     };
   }
   public componentWillReceiveProps(nextProps: ISearchMaskProps): void {
@@ -880,6 +880,7 @@ export default class DocumentCrud extends React.Component<
         });
       });
     });
+
     joinPolicyCategoryItems.forEach(j => {
       itemList
         .filter(f => f.Id === j.Id)
@@ -924,7 +925,10 @@ export default class DocumentCrud extends React.Component<
           internalPolicies: documentFiles,
           joinPolicyCategoryItems,
           joinRegulatoryTopicItems,
-          status: `Displaying ${this.state.itemsLengthDisplayed} of ${documentFiles.length} items`
+          status:
+            this.state.itemsLengthDisplayed <= documentFiles.length
+              ? `Displaying ${this.state.itemsLengthDisplayed} of ${documentFiles.length} items`
+              : `Displaying ${documentFiles.length} of ${this.state.itemsLengthDisplayed} items`
         });
         this.dropDownPolicyCategory(documentFiles);
         this.dropDownRegulatoryTopic(documentFiles);

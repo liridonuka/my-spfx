@@ -3,6 +3,7 @@ declare interface ISearchMaskWebPartStrings {
   BasicGroupName: string;
   DescriptionLibrary: string;
   DescriptionJoinList: string;
+  DescriptionMyWorkingSpace: string;
   CommentDialogTitle: string;
   CommentDialogSubTitle: string;
 }
