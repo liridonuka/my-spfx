@@ -17,11 +17,20 @@
           "manifest": "./src/webparts/searchMask/SearchMaskWebPart.manifest.json"
         }
       ]
+    },
+    "filtered-policies-web-part": {
+      "components": [
+        {
+          "entrypoint": "./lib/webparts/filteredPolicies/FilteredPoliciesWebPart.js",
+          "manifest": "./src/webparts/filteredPolicies/FilteredPoliciesWebPart.manifest.json"
+        }
+      ]
     }
   },
   "externals": {},
   "localizedResources": {
     "DocumentCrudWebPartStrings": "lib/webparts/documentCrud/loc/{locale}.js",
-    "SearchMaskWebPartStrings": "lib/webparts/searchMask/loc/{locale}.js"
+    "SearchMaskWebPartStrings": "lib/webparts/searchMask/loc/{locale}.js",
+    "FilteredPoliciesWebPartStrings": "lib/webparts/filteredPolicies/loc/{locale}.js"
   }
 }
