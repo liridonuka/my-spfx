@@ -2,6 +2,7 @@ export interface IListItem {
   Id: number;
   PolicyNumber: string;
   Name: string;
+  links: ISuper[];
   Version: string;
   DocumentLink: string;
   PolicyCategory: string;
@@ -13,4 +14,10 @@ export interface IListItem {
   Favorite: number;
   Rate: number;
   Comment: string;
+}
+
+export interface ISuper {
+  key: string;
+  name: string;
+  url: string;
 }

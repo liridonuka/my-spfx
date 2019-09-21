@@ -3,7 +3,7 @@ import styles from "./FilteredPolicies.module.scss";
 import { IFilteredPoliciesProps } from "./IFilteredPoliciesProps";
 import { IFilteredPoliciesState } from "./IFilteredPoliciesState";
 import { Web, ItemAddResult, sp } from "@pnp/sp";
-import { Nav } from "office-ui-fabric-react/lib/Nav";
+import { Nav, INavLinkGroup } from "office-ui-fabric-react/lib/Nav";
 import { escape } from "@microsoft/sp-lodash-subset";
 
 export default class FilteredPolicies extends React.Component<
@@ -29,22 +29,18 @@ export default class FilteredPolicies extends React.Component<
       <div className={styles.filteredPolicies}>
         {this.state.joinPolicyCategoryItems.map(items => (
           <Nav
+            // styles={{ root: { width: 300 } }}
             expandButtonAriaLabel="Expand or collapse"
-            ariaLabel="Nav example with nested links"
+            ariaLabel="Nav example similiar to one found in this demo page"
             groups={[
               {
+                name: `${items.PolicyCategory}`,
+                collapseByDefault: true,
                 links: [
                   {
-                    name: `${items}`,
-                    url: "http://example.com",
-                    target: "#",
-                    links: [
-                      {
-                        name: "Child link 1",
-                        url: "http://example.com",
-                        target: "_blank"
-                      }
-                    ]
+                    key: `${items.links.map(i => i.key)}`,
+                    name: `${items.links.map(i => i.name)}`,
+                    url: `${items.links.map(i => i.url)}`
                   }
                 ]
               }
@@ -147,11 +143,26 @@ export default class FilteredPolicies extends React.Component<
           : ""
       });
     });
+    let myList = [];
     const a = this.fillDropDown(joinPolicyCategoryItems, "PolicyCategory");
+    a.forEach((value, i) => {
+      myList.push({ PolicyCategory: value, links: [] });
+      documentFiles
+        .filter(f => f.PolicyCategory.includes(value))
+        .map(item =>
+          myList[i].links.push({
+            key: item.Name,
+            name: item.Name,
+            url: item.DocumentLink
+          })
+        );
+    });
+
+    console.log(myList);
     this.setState({
       documentFiles,
       internalPolicies: documentFiles,
-      joinPolicyCategoryItems: a,
+      joinPolicyCategoryItems: myList,
       joinRegulatoryTopicItems,
       status: `Displaying ${documentFiles.length} items`,
       statusIndicator: 1
