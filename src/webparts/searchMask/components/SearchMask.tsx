@@ -224,6 +224,7 @@ export default class DocumentCrud extends React.Component<
                     <a
                       className={styles.linkPolicies}
                       href={document.DocumentLink}
+                      target="_blank"
                     >
                       {document.PolicyNumber} {document.Name} {" v"}
                       {document.Version}
@@ -403,6 +404,7 @@ export default class DocumentCrud extends React.Component<
                           <a
                             className={styles.linkPolicies}
                             href={document.DocumentLink}
+                            target="_blank"
                           >
                             {document.PolicyNumber} {document.Name} {" v"}
                             {document.Version}

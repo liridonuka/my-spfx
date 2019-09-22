@@ -18,20 +18,19 @@ export default class FilteredPolicies extends React.Component<
         ? "Please configure list in Web Part properties"
         : "Ready",
       statusIndicator: 1,
-      internalPolicies: [],
       documentFiles: [],
-      joinPolicyCategoryItems: [],
-      joinRegulatoryTopicItems: []
+      navCategoryItems: []
     };
   }
   public render(): React.ReactElement<IFilteredPoliciesProps> {
     return (
       <div className={styles.filteredPolicies}>
+        <h3>{this.state.status}</h3>
         <Nav
           // styles={{ root: { width: 300 } }}
           expandButtonAriaLabel="Expand or collapse"
           ariaLabel="Nav example similiar to one found in this demo page"
-          groups={this.state.joinPolicyCategoryItems}
+          groups={this.state.navCategoryItems}
         />
       </div>
     );
@@ -129,36 +128,45 @@ export default class FilteredPolicies extends React.Component<
           : ""
       });
     });
-    let myList = [];
-    let myList1 = [];
-    const a = this.fillDropDown(joinPolicyCategoryItems, "PolicyCategory");
+    let navCategoryItems = [];
+    const navSelected = this.fillNav(
+      this.props.navCategorySelected
+        ? joinPolicyCategoryItems
+        : joinRegulatoryTopicItems,
+      this.props.navCategorySelected ? "PolicyCategory" : "RegulatoryTopic"
+    );
 
-    a.forEach((value, i) => {
-      myList.push({
+    navSelected.forEach((value, i) => {
+      navCategoryItems.push({
         name: value,
         collapseByDefault: true,
         links: []
       });
       documentFiles
-        .filter(f => f.PolicyCategory.includes(value))
+        .filter(f =>
+          this.props.navCategorySelected
+            ? f.PolicyCategory.includes(value)
+            : f.RegulatoryTopic.includes(value)
+        )
         .map(item =>
-          myList[i].links.push({
+          navCategoryItems[i].links.push({
             key: item.Name,
             name: item.Name,
-            url: item.DocumentLink
+            url: item.DocumentLink,
+            target: "_blank"
           })
         );
     });
     this.setState({
       documentFiles,
-      internalPolicies: documentFiles,
-      joinPolicyCategoryItems: myList,
-      joinRegulatoryTopicItems,
-      status: `Displaying ${documentFiles.length} items`,
+      navCategoryItems,
+      status: this.props.navCategorySelected
+        ? "Grouped by business function"
+        : "Grouped by regulatory topic",
       statusIndicator: 1
     });
   }
-  private fillDropDown(items?, filedName?) {
+  private fillNav(items?, filedName?) {
     let documentFiles = [];
     documentFiles.push(...items);
 

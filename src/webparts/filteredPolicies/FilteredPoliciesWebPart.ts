@@ -4,7 +4,8 @@ import { Version } from "@microsoft/sp-core-library";
 import {
   BaseClientSideWebPart,
   IPropertyPaneConfiguration,
-  PropertyPaneTextField
+  PropertyPaneTextField,
+  PropertyPaneToggle
 } from "@microsoft/sp-webpart-base";
 
 import * as strings from "FilteredPoliciesWebPartStrings";
@@ -23,7 +24,8 @@ export default class FilteredPoliciesWebPart extends BaseClientSideWebPart<
       IFilteredPoliciesProps
     > = React.createElement(FilteredPolicies, {
       listName: this.properties.listName,
-      context: this.context
+      context: this.context,
+      navCategorySelected: this.properties.navCategorySelected
     });
 
     ReactDom.render(element, this.domElement);
@@ -50,6 +52,11 @@ export default class FilteredPoliciesWebPart extends BaseClientSideWebPart<
               groupFields: [
                 PropertyPaneTextField("listName", {
                   label: strings.DescriptionFieldLabel
+                }),
+                PropertyPaneToggle("navCategorySelected", {
+                  label: strings.DescriptionNavCategorySelected,
+                  onText: "Business function",
+                  offText: "Regulatory topic"
                 })
               ]
             }
