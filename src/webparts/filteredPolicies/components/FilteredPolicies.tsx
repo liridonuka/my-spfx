@@ -2,7 +2,7 @@ import * as React from "react";
 import styles from "./FilteredPolicies.module.scss";
 import { IFilteredPoliciesProps } from "./IFilteredPoliciesProps";
 import { IFilteredPoliciesState } from "./IFilteredPoliciesState";
-import { Web, ItemAddResult, sp } from "@pnp/sp";
+import { Web, ItemAddResult, sp, Item } from "@pnp/sp";
 import { Nav, INavLinkGroup } from "office-ui-fabric-react/lib/Nav";
 import { escape } from "@microsoft/sp-lodash-subset";
 
@@ -27,26 +27,12 @@ export default class FilteredPolicies extends React.Component<
   public render(): React.ReactElement<IFilteredPoliciesProps> {
     return (
       <div className={styles.filteredPolicies}>
-        {this.state.joinPolicyCategoryItems.map(items => (
-          <Nav
-            // styles={{ root: { width: 300 } }}
-            expandButtonAriaLabel="Expand or collapse"
-            ariaLabel="Nav example similiar to one found in this demo page"
-            groups={[
-              {
-                name: `${items.PolicyCategory}`,
-                collapseByDefault: true,
-                links: [
-                  {
-                    key: `${items.links.map(i => i.key)}`,
-                    name: `${items.links.map(i => i.name)}`,
-                    url: `${items.links.map(i => i.url)}`
-                  }
-                ]
-              }
-            ]}
-          />
-        ))}
+        <Nav
+          // styles={{ root: { width: 300 } }}
+          expandButtonAriaLabel="Expand or collapse"
+          ariaLabel="Nav example similiar to one found in this demo page"
+          groups={this.state.joinPolicyCategoryItems}
+        />
       </div>
     );
   }
@@ -144,9 +130,15 @@ export default class FilteredPolicies extends React.Component<
       });
     });
     let myList = [];
+    let myList1 = [];
     const a = this.fillDropDown(joinPolicyCategoryItems, "PolicyCategory");
+
     a.forEach((value, i) => {
-      myList.push({ PolicyCategory: value, links: [] });
+      myList.push({
+        name: value,
+        collapseByDefault: true,
+        links: []
+      });
       documentFiles
         .filter(f => f.PolicyCategory.includes(value))
         .map(item =>
@@ -157,8 +149,6 @@ export default class FilteredPolicies extends React.Component<
           })
         );
     });
-
-    console.log(myList);
     this.setState({
       documentFiles,
       internalPolicies: documentFiles,
