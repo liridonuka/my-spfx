@@ -151,7 +151,7 @@ export default class FilteredPolicies extends React.Component<
         .map(item =>
           navCategoryItems[i].links.push({
             key: item.Name,
-            name: item.Name,
+            name: item.Name + " - " + item.ApprovedDate,
             url: item.DocumentLink,
             target: "_blank"
           })
@@ -161,8 +161,8 @@ export default class FilteredPolicies extends React.Component<
       documentFiles,
       navCategoryItems,
       status: this.props.navCategorySelected
-        ? "Grouped by business function"
-        : "Grouped by regulatory topic",
+        ? "Group by business function"
+        : "Group by regulatory topic",
       statusIndicator: 1
     });
   }
